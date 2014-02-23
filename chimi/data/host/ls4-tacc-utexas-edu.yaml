@@ -1,0 +1,19 @@
+---
+# Host configuration file for Lonestar4 @ TACC at the University of Texas at
+# Austin.
+build:
+  architecture: 'net-linux-x86_64'
+  options:
+    icc:                        # Intel compiler suite
+      default: yes
+    ibverbs:
+      default: yes
+      extras: ['-L/opt/ofed/lib64', '-I/opt/ofed/include']
+    cuda:
+      settings: { cuda-level: '20' }
+      # cuda toolkit location is detected via environment variable, which is
+      # set by `lmod`, which itself is loaded if the `LMOD_CMD` env var is set
+      # (which it is on Lonestar4).
+run:
+  job-manager: sge
+  host: lonestar.tacc.utexas.edu

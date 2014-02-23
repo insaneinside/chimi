@@ -1,0 +1,9 @@
+# Emacs-style backup files
+*~
+
+# Build directory
+build
+
+# Python byte-compiled files
+chimi/*.pyc
+chimi/__pycache__
