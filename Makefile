@@ -19,10 +19,8 @@ all: build/chimi
 PY_SOURCES:=__main__.py $(wildcard chimi/*.py)
 DATA_FILES:=$(wildcard chimi/data/*.yaml chimi/data/host/*.yaml)
 
-build:
-	mkdir build
-
-build/chimi: build $(PY_SOURCES) $(DATA_FILES)
+build/chimi: $(PY_SOURCES) $(DATA_FILES)
+	(test -d build || mkdir build) && \
 	zip $@.tmp $^ && \
 	echo '#!/usr/bin/env python' | cat - $@.tmp > $@ && \
 	rm $@.tmp && chmod +x $@
