@@ -295,8 +295,80 @@ def list_items(opts, directory=None):
                 sys.stdout.write("      " + str(msg) + "\n")
 
 def runfn(opts, *args):
-    hi = chimi.HostConfig.load()
+    host_config = None
+    context = None
+
+    host_name = 'localhost'
+    user_name = None
+
+    if 'host' in opts:
+        host_name = opts['host']
+    if '@' in host_name:
+        user_name, host_name = host_name.split('@')
+
+
+    host_config = chimi.config.HostConfig.load(host_name)
+
+    if 'context' in opts:
+        cxt = opts['context']
+        cxt_settings = {}
+        cxtname = cxt
+        if ':' in cxt:
+            cxtname, cxtopts = cxt.split(':', 2)
+            cxtopts = cxtopts.split(',')
+            for opt in cxtopts:
+                if not '=' in opt:
+                    raise ValueError('Invalid context setting in "%s"' % opt)
+                else:
+                    name, val = opt.split('=', 2)
+                    cxt_settings[oname] = oval
+
+        context = saga.Context(cxtname)
+        for name in cxt_settings:
+            setattr(context, name, cxt_settings[name])
+    elif not host_config.matches_current_host:
+        context = saga.Context('ssh')
+        ssh_config = chimi.SSHConfig()
+
+        if user_name == None:
+            user_name = ssh_config.value('User', host_name)
+
+        if user_name != None:
+            context.user_id = user_name
+
+        identity_file = ssh_config.value('IdentityFile', host_name)
+
+        if identity_file != None:
+            context.user_cert = identity_file
+
+
     
+    build_config = None         # FINISHME: use command arguments to create the
+                                # build config.
+
+    ps = find_current_package_set() # FIXME: make this work for remote hosts?
+    build = ps.packages['changa'].find_build(build_config)
+
+    job_desc = saga.job.Description()
+    job_desc.executable = os.path.join(build.directory, 'ChaNGa')
+    job_desc.arguments = args[1:]
+
+    if 'O' in opts:
+        jobopts = {}
+        for jo_list_string in opts['O']:
+            for jo in jo_list_string.split(','):
+                name, val = jo.split('=', 2)
+                jobopts[name] = val
+        for name in jobopts:
+            val = jobopts[val]
+            if name == 'wall_time_limit' or name == 'total_cpu_count':
+                val = int(val)
+            setattr(job_desc, name, val)
+
+    session = saga.Session()
+    session.add_context(context)
+    service = saga.job.Service()
+
 
 from chimi import Command
 COMMAND_LIST = [
@@ -326,12 +398,14 @@ COMMAND_LIST = [
               ],
             None, build),
     Command('run', ['[ARG]...'], 'Run ChaNGa in a manner appropriate to the current or selected host.',
-            [ Option('H', 'host', 'Run the job remotely on host HOST (default: local run)',
+            [ Option('C', 'context', 'Use SAGA security context CONTEXT and options.',
+                     'CONTEXT[:var=value]...').store(),
+              Option('H', 'host', 'Run the job remotely via SSH to HOST (default: local run)',
                      '[USER@]HOST').store(),
-              Option('E', None, 'Set an environment variable for the job',
+              Option('E', None, 'Set an environment variable for the job.',
                      'VAR=VALUE').store(multiple=True),
-              Option('o', None, 'Set SAGA build options', 'NAME=VALUE[,NAME=VALUE]...')\
-                  .store(multiple=True),
+              Option('o', None, 'Select a build matching OPTION[s].', 'OPT[,OPT]...').store(multiple=True),
+              Option('O', None, 'Set SAGA job options.', 'NAME=VALUE[,NAME=VALUE]...').store(multiple=True),
               ],
             None, runfn),
     Command('status', [], 'List recorded build/package information.',

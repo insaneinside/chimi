@@ -18,3 +18,4 @@ from chimi.option import OptionParser
 from chimi.core import *
 from chimi.config import *
 from chimi.util import *
+from chimi.sshconfig import SSHConfig
