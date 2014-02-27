@@ -260,7 +260,7 @@ class HostConfig(object):
             matching_files = [self.find_host_file_by_name(name)]
 
         if len(matching_files) > 0 and matching_files[0] != None:
-            host_data_file = 'data/host/%s.yaml' % matching_files[0]
+            host_data_file = 'data/host/%s' % matching_files[0]
             if pkg_resources.resource_exists(__name__, host_data_file):
                 return HostConfig(yaml.load(pkg_resources.resource_string(__name__, host_data_file)))
 
