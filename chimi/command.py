@@ -18,12 +18,14 @@ from __future__ import print_function
 import os
 import re
 import sys
+import saga
 import yaml
 import string
 import inspect
 import subprocess
 
 import chimi
+import chimi.lmod
 from chimi import *
 
 global DEFAULT_REPOSITORIES
@@ -33,13 +35,12 @@ DEFAULT_REPOSITORIES={
     'utility' : 'http://charm.cs.illinois.edu/gerrit/cosmo/utility.git'
     }
 
-def get_host_info():
-    return chimi.HostConfig.load()
+basename = os.path.basename(sys.argv[0])
 
 def load_platform_resources():
     if os.environ.has_key('LMOD_CMD'):
-        lmod.load('cuda')
-        lmod.load('git')
+        chimi.lmod.load('cuda')
+        chimi.lmod.load('git')
     else:
         if os.path.exists('/usr/lib/nvidia-cuda-toolkit'):
             os.environ['CUDA_DIR'] = '/usr/lib/nvidia-cuda-toolkit'
@@ -69,12 +70,12 @@ def find_current_package_set():
                 sys.stderr.write("The current directory does not look like " +
                                  "an initialized chimi\ndirectory.  " +
                                  "Do you need to run `%s init .'?\n" % \
-                                     (sys.argv[0]))                                 
+                                     basename)
             else:
                 sys.stderr.write("Neither the current directory nor any parent " +
                                  "up to mount point %s looks\nlike an " % _dir +
                                  "initialized chimi directory.  " +
-                                 "Do you need to run `%s init .'?\n" % (sys.argv[0]))
+                                 "Do you need to run `%s init .'?\n" % basename)
             exit(1)
 
 # def fetch_sources(opts, dest_dir=None):
@@ -102,14 +103,14 @@ def helpfn(opts, *args):
         del args[-1]
 
     if len(args) == 0:
-        io.write("Valid commands are:\n")    
+        io.write("Valid commands are:\n")
         for cmd in COMMAND_LIST:
             brief = cmd.brief
             if brief == None:
                 brief = '<undocumented>'
             io.write("  %-10s  %s\n" % (cmd.name, brief))
-        io.write("\nUse `%s help COMMAND' for detailed information on a command.\n" % sys.argv[0])
-        io.write("If no command is given, `%s' does nothing.\n" % sys.argv[0])
+        io.write("\nUse `%s help COMMAND' for detailed information on a command.\n" % basename)
+        io.write("If no command is given, `%s' does nothing.\n" % basename)
 
     else:
         io.write(COMMANDS[args[0]].help)
@@ -337,11 +338,11 @@ COMMAND_LIST = [
             [ Option('r', 'reltime', 'Use relative time stamps').store() ],
             None, list_items)
     ]
-    
+
 COMMAND_NAMES = [ cmd.name for cmd in COMMAND_LIST ]
 COMMANDS = {}
 
-PROGRAM_USAGE='%s [OPTION]... COMMAND [ARGUMENT]...' % sys.argv[0]
+PROGRAM_USAGE='%s [OPTION]... COMMAND [ARGUMENT]...' % basename
 PROGRAM_DESCRIPTION='Perform boring ChaNGa-related tasks.'
 
 for cmd in COMMAND_LIST:
