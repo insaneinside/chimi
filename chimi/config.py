@@ -164,15 +164,15 @@ class HostRunConfig(object):
             # system.
             return 'fork'
 
-    def __init__(self, d):
-        assert(isinstance(d, dict))
-        if 'job-manager' in d:
-            self.job_manager = d['job-manager']
-        else:
-            self.job_manager = self.determine_job_manager()
+    def __init__(self, d=None):
+        if isinstance(d, dict):
+            if 'job-manager' in d:
+                self.job_manager = d['job-manager']
+            else:
+                self.job_manager = self.determine_job_manager()
 
-        if 'host' in d:
-            self.host = d['host']
+            if 'host' in d:
+                self.host = d['host']
 
 
 class HostConfig(object):
