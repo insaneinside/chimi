@@ -225,7 +225,7 @@ class OptionParser:
                 optarg_length += len(o.long_name) + 2
             if o.short_name != None:
                 optarg_length += len(o.short_name) + 1
-            if o.long_name != None and o.long_name != None:
+            if o.short_name != None and o.long_name != None:
                 optarg_length += 2
                 
             if not o.argument_description == None:
