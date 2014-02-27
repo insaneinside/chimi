@@ -17,13 +17,16 @@
 all: build/chimi
 
 PY_SOURCES:=__main__.py $(wildcard chimi/*.py)
-DATA_FILES:=$(wildcard chimi/data/*.yaml chimi/data/host/*.yaml)
+DATA_FILES:=$(sort chimi/data/host-index.yaml $(wildcard chimi/data/*.yaml chimi/data/host/*.yaml))
 
 build/chimi: $(PY_SOURCES) $(DATA_FILES)
 	(test -d build || mkdir build) && \
 	zip $@.tmp $^ && \
 	echo '#!/usr/bin/env python' | cat - $@.tmp > $@ && \
 	rm $@.tmp && chmod +x $@
+
+chimi/data/host-index.yaml: make-host-index.py $(wildcard chimi/data/host/*.yaml)
+	python make-host-index.py > $@
 
 
 .PHONY: all

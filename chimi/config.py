@@ -179,15 +179,29 @@ class HostConfig(object):
     """
     Stores host-specific configuration values.
 
+    hostname: FQDN of the current host.
+
+    aliases: list of names that, when specified by the user, should also
+        identify this host.
+
     build: a HostBuildConfig instance.
 
     run: a HostRunConfig instance.
 
     """
 
-    def __init__(self, build, run=None):
-        if isinstance(build, dict) and run == None:
-            d = build
+    def __init__(self, hostname, aliases=None, build=None, run=None):
+        if isinstance(hostname, dict) and aliases==None and build == None and run == None:
+            d = hostname
+
+            if 'hostname' in d:
+                self.hostname = d['hostname']
+
+            if 'aliases' in d:
+                self.aliases = d['aliases']
+            else:
+                self.aliases = []
+
             if 'build' in d:
                 self.build = HostBuildConfig(d['build'])
             else:
@@ -197,19 +211,61 @@ class HostConfig(object):
                 self.run = HostRunConfig(d['run'])
             else:
                 self.run = HostRunConfig({})
+        else:
+            if hostname:
+                self.hostname = hostname
+            else:
+                self.hostname = socket.gethostname()
+
+            if aliases:
+                self.aliases = aliases
+            else:
+                self.aliases = socket.gethostbyname_ex(self.hostname)[1]
+
+            if build:
+                self.build = build
+            else:
+                self.build = HostBuildConfig()
+
+            if run:
+                self.run = run
+            else:
+                self.run = HostRunConfig()
+        
+    @property
+    def matches_current_host(self):
+        """Check if this HostConfig instance matches the local host."""
+        return re.match(r'.*%s$' % socket.gethostname(), self.hostname)
+
 
     @classmethod
-    def load(self):
-        """Attempt to find and load a host-specific configuration file.  Returns
-        a HostConfig instance if one was found, and None otherwise."""
-        hostname = socket.gethostname().replace('.', '-')
-        available_files = pkg_resources.resource_listdir(__name__, 'data/host')
-        available_files = [re.sub(r'\.yaml$', '', fname) for fname in available_files]
-        
-        matching_files = filter(lambda avf: re.match(r'.*%s$' % avf, hostname), available_files)
-        if len(matching_files) > 0:
+    def load(self, name=None):
+        """
+        Attempt to find and load a host-specific configuration file.  Returns
+        a HostConfig instance if one was found, and None otherwise.
+
+        name: name or alias of the host to load a configuration for.  Default:
+            load a configuration for the current host.
+
+        """
+
+        matching_files = []
+
+        if name == None or name == 'localhost':
+            hostname = socket.gethostname().replace('.', '-')
+            available_files = pkg_resources.resource_listdir(__name__, 'data/host')
+            available_files = [re.sub(r'\.yaml$', '', fname) for fname in available_files]
+            matching_files = filter(lambda avf: re.match(r'.*%s$' % avf, hostname), available_files)
+        else:
+            matching_files = [self.find_host_file_by_name(name)]
+
+        if len(matching_files) > 0 and matching_files[0] != None:
             host_data_file = 'data/host/%s.yaml' % matching_files[0]
             if pkg_resources.resource_exists(__name__, host_data_file):
                 return HostConfig(yaml.load(pkg_resources.resource_string(__name__, host_data_file)))
 
-        
+    @classmethod
+    def find_host_file_by_name(self, name):
+        index = yaml.load(pkg_resources.resource_string(__name__, 'data/host-index.yaml'))
+        if name in index:
+            return index[name]

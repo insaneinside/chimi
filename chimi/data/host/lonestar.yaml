@@ -1,6 +1,13 @@
 ---
 # Host configuration file for Lonestar4 @ TACC at the University of Texas at
 # Austin.
+
+# These next two values are used to build Chimi's host-aliases index.
+# "Significant" components of the output of `hostname` on the host.
+hostname: 'ls4.tacc.utexas.edu'
+# Other names that should identify this host.
+aliases: ['lonestar', 'lonestar4']
+
 build:
   architecture: 'net-linux-x86_64'
   options:
@@ -15,5 +22,9 @@ build:
       # set by `lmod`, which itself is loaded if the `LMOD_CMD` env var is set
       # (which it is on Lonestar4).
 run:
+  # Job-management system in use on the host.  Any management system sypported
+  # by SAGA-Python (<http://saga-project.github.io/saga-python/>) should work.
   job-manager: sge
+
+  # This field is the preferred hostname to use when logging in via SSH.
   host: lonestar.tacc.utexas.edu
