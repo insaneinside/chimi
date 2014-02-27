@@ -29,4 +29,3 @@ chimi/data/host-index.yaml: make-host-index.py $(wildcard chimi/data/host/*.yaml
 	python make-host-index.py > $@
 
 
-.PHONY: all
