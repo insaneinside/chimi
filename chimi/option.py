@@ -176,6 +176,11 @@ class OptionParser:
     @classmethod
     def handle_options(self, option_list, arguments = sys.argv[1:], stop_args=[]):
         """Handle script arguments according to the given options array."""
+        if isinstance(option_list, dict):
+            option_list = [item for sublist in option_list.values() for item in sublist]
+        elif isinstance(option_list, list) and isinstance(option_list[0], tuple):
+            option_list = [opt for _tuple in option_list for opt in _tuple[1]]
+
         out = {}
 
         short_option_map = { }
@@ -230,10 +235,16 @@ class OptionParser:
 
     @classmethod
     def format_help(self, option_list, usage, description):
-        out = ''
+        all_options = option_list
+        if isinstance(all_options, dict):
+            all_options = [item for sublist in option_list.values() for item in sublist]
+        elif isinstance(all_options[0], tuple):
+            all_options = [item for _tuple in option_list for item in _tuple[1]]
 
+        out = ''
         max_len = 0
-        for o in option_list:
+
+        for o in all_options:
             optarg_length = 0
 
             if o.short_name != None or o.long_name != None:
@@ -262,9 +273,21 @@ class OptionParser:
             out += "\n%s\n" % description
 
         if isinstance(option_list, list) and len(option_list) > 0:
-            out += "\nOptions:\n"
-            for o in option_list:
-                out += "%s\n" % o.to_string(desc_start_col)
+            if isinstance(option_list[0], Option):
+                out += "\nOptions:\n"
+                for o in option_list:
+                    out += "%s\n" % o.to_string(desc_start_col)
+            elif isinstance(option_list[0], tuple):
+                for name, opts in option_list:
+                    out += "\n%s:\n" % name
+                    for o in opts:
+                        out += "%s\n" % o.to_string(desc_start_col)
+        elif isinstance(option_list, dict):
+            for section_name in option_list:
+                section_opts = option_list[section_name]
+                out += "\n%s:\n" % section_name
+                for o in section_opts:
+                    out += "%s\n" % o.to_string(desc_start_col)
 
         return out
 
