@@ -15,7 +15,7 @@ def raise_host_conflict(kind, value, source, entry):
     if entry.kind == 'alias':
         entry_kind_desc = "an alias"
         
-    sys.stderr.write("CONFLICT: tried to add %s \"%\" from %s to index but"
+    sys.stderr.write("CONFLICT: tried to add %s \"%s\" from %s to index but"
                      " that name was used as\n %s in %s.\n" %
                      (kind, value, source, entry_kind_desc, entry.host_file))
 
