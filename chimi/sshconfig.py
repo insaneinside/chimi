@@ -56,18 +56,19 @@ class SSHConfig(object):
         self.host_settings['*'] = self.global_settings
         target = self.global_settings
 
-        lines = file(filename, 'r').readlines()
-        for l in lines:
-            if not re.match(r'^\s*\#.*', l): # skip comments
-                l = re.sub(r'^\s+', '', l)
-                x = re.search(r'^(%s)(?:(?:\s+)|(?:\s*=\s*)|(?:=\s*))(.+)$'% SSHConfig.KEYWORD_REGEXP, l)
-                if x != None:
-                    x = x.groups()
-                    if x[0] == 'Host':
-                      if x[1] == '*':
-                        target = self.global_settings
-                      else:
-                        self.host_settings[x[1]] = {}
-                        target = self.host_settings[x[1]]
-                    elif len(x) == 2:
-                      target[x[0]] = x[1]
+        if os.path.isfile(filename):
+            lines = file(filename, 'r').readlines()
+            for l in lines:
+                if not re.match(r'^\s*\#.*', l): # skip comments
+                    l = re.sub(r'^\s+', '', l)
+                    x = re.search(r'^(%s)(?:(?:\s+)|(?:\s*=\s*)|(?:=\s*))(.+)$'% SSHConfig.KEYWORD_REGEXP, l)
+                    if x != None:
+                        x = x.groups()
+                        if x[0] == 'Host':
+                          if x[1] == '*':
+                            target = self.global_settings
+                          else:
+                            self.host_settings[x[1]] = {}
+                            target = self.host_settings[x[1]]
+                        elif len(x) == 2:
+                          target[x[0]] = x[1]
