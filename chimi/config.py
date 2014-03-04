@@ -25,6 +25,16 @@ import socket
 import pkg_resources
 import chimi.core
 
+
+DEFAULT_COMMS_TYPE='net'
+"""Default Charm++ communications transport to use"""
+
+def get_architecture():
+    """Get the likely Charm++ platform/architecture for the current host"""
+    osname, hostname, discard, discard, machname = os.uname()
+    return '-'.join([DEFAULT_COMMS_TYPE, osname.lower(), machname.lower()])
+
+
 class HostBuildOption(object):
     """
     Default values for a build option loaded from a host configuration file
@@ -84,23 +94,13 @@ class HostBuildOption(object):
 
 class HostBuildConfig(object):
     """Build configuration values for a specific host."""
-
-    DEFAULT_COMMS_TYPE='net'
-
-    @classmethod
-    def get_architecture(self):
-        """Get the likely Charm++ platform/architecture for the current host"""
-        osname, hostname, discard, discard, machname = os.uname()
-        return '-'.join([HostBuildConfig.DEFAULT_COMMS_TYPE, osname.lower(), machname.lower()])
-        
-
     def __init__(self, arch, options=None):
         if isinstance(arch, dict) and options == None:
             d = arch
             if 'architecture' in d:
                 self.architecture = d['architecture']
             else:
-                self.architecture = self.get_architecture()
+                self.architecture = chimi.config.get_architecture()
 
             self.options = {}
             if 'options' in d:

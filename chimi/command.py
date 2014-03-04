@@ -144,7 +144,7 @@ def build(config, which):
         del config['replace']
 
     if not 'arch' in config:
-        config['arch'] = chimi.config.HostBuildConfig.get_architecture()
+        config['arch'] = chimi.config.get_architecture()
     if not 'settings' in config:
         config['settings'] = {}
 
