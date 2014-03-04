@@ -115,34 +115,7 @@ def helpfn(opts, *args):
     else:
         io.write(COMMANDS[args[0]].help)
 
-def build(config, which):
-    which_args = ['all', 'changa', 'charm']
-
-    if type(which) != str:
-        which = which[0]
-
-    if not which in which_args:
-        raise ValueError('Invalid `build` target')
-
-    ps = find_current_package_set()
-    changa = ps.packages['changa']
-    charm = ps.packages['charm']
-
-    force = False
-    if 'force' in config:
-        force = config['force']
-        del config['force']
-
-    _continue = False
-    if 'continue' in config:
-        _continue = config['continue']
-        del config['continue']
-
-    replace = False
-    if 'replace' in config:
-        replace = config['replace']
-        del config['replace']
-
+def make_build_config(config):
     if not 'arch' in config:
         config['arch'] = chimi.config.get_architecture()
     if not 'settings' in config:
@@ -193,9 +166,8 @@ def build(config, which):
     else:
         config['options'] = []
 
-    noact = False
-    if 'noact' in config:
-        noact = True
+    if len(negate_options) > 0:
+        config.options = list(set(config.options).difference(set(negate_options)))
 
     # Make the config into an actual build configuration.
     config = chimi.core.BuildConfig(config['arch'], config['options'], config['settings'], config['extras'])
@@ -205,11 +177,46 @@ def build(config, which):
     if hi != None:
         hi.build.apply(config)
 
-    if len(negate_options) > 0:
-        config.options = list(set(config.options).difference(set(negate_options)))
+    return(config)
+
+
+def build(config, which):
+    which_args = ['all', 'changa', 'charm']
+
+    if type(which) != str:
+        which = which[0]
+
+    if not which in which_args:
+        raise ValueError('Invalid `build` target')
+
+    ps = find_current_package_set()
+    changa = ps.packages['changa']
+    charm = ps.packages['charm']
+
+    force = False
+    if 'force' in config:
+        force = config['force']
+        del config['force']
+
+    _continue = False
+    if 'continue' in config:
+        _continue = config['continue']
+        del config['continue']
+
+    replace = False
+    if 'replace' in config:
+        replace = config['replace']
+        del config['replace']
+
+    noact = False
+    if 'noact' in config:
+        noact = True
+        del config['noact']
+
+    config = make_build_config(config)
+    config.options.sort()
 
     if noact:
-        print(hi)
         print(config.architecture)
         print(config.options)
         print(config.settings)
@@ -233,6 +240,7 @@ def build(config, which):
             try:
                 ps[item].build(config, _continue, replace)
             except KeyboardInterrupt:
+                ps.save_flag = True
                 ps[item].find_build(config).update(BuildStatus.InterruptedByUser)
                 ps.save()
                 exit(1)
