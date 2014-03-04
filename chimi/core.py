@@ -452,7 +452,7 @@ class CharmDefinition(PackageDefinition):
             config = config[0]
         opts = [config.architecture]
         options = list(config.options)
-        options.sort
+        options.sort()
         opts.extend(options)
         return '-'.join(opts)
 
