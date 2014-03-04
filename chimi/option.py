@@ -19,12 +19,11 @@
 # This file is ported from Ruby, so please excuse the YARDoc comments.
 
 import sys
-import textwrap
 
 # Option-data storage/representation.  Used to declare/define a single program
 # option.
 class Option:
-    LINE_WRAP_COLUMN=80
+    LINE_WRAP_COLUMN=96
     short_name = None
     long_name = None
     description = None
@@ -123,7 +122,7 @@ class Option:
         return self.argument_description != None
 
 
-    def to_string(self, wrapper):
+    def to_string(self, wrap_start_col):
         out = '  '
         
         if self.short_name != None:
@@ -143,7 +142,27 @@ class Option:
                 out += self.argument_description
                 out += ']'
 
-        return ('%%-%ds%%s' % len(wrapper.subsequent_indent)) % (out, wrapper.fill(self.description))
+        return ('%%-%ds%%s' % wrap_start_col) % (out,
+                                                 self.wrap_text(self.description, wrap_start_col,
+                                                                Option.LINE_WRAP_COLUMN))
+
+
+    @classmethod
+    def wrap_text(self, s, start_col=0, max_col=75):
+        width = max_col - start_col
+
+        if len(s) <= width:
+            return s
+        else:
+            out = ''
+            while len(s) > width:
+                front = s[0:width]
+                parts = front.rpartition(' ')
+                s = parts[2].strip() + s[width:]
+                out += "%s\n%s" % (parts[0], ' ' * start_col)
+            out += s.strip()
+            return out
+
 
     def get_preferred_key(self):
         if self.long_name != None:
@@ -238,9 +257,6 @@ class OptionParser:
 
         desc_start_col = (max_len + 2)
 
-        wrapper = textwrap.TextWrapper(width=Option.LINE_WRAP_COLUMN - desc_start_col,
-                                       subsequent_indent=' ' * desc_start_col)
-
         out += OptionParser.format_usage(usage)
         if description != None:
             out += "\n%s\n" % description
@@ -248,7 +264,7 @@ class OptionParser:
         if isinstance(option_list, list) and len(option_list) > 0:
             out += "\nOptions:\n"
             for o in option_list:
-                out += "%s\n" % o.to_string(wrapper)
+                out += "%s\n" % o.to_string(desc_start_col)
 
         return out
 
