@@ -31,6 +31,9 @@ def get_cuda_dir():
     if len(names) > 0:
         return os.environ[names[0]]
     else:
+        for name in ['/usr/local/cuda', '/usr/lib/nvidia-cuda-toolkit']:
+            if os.path.exists(name):
+                return name
         return None
 
 def build_configure_flags(config):
