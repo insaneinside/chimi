@@ -23,6 +23,7 @@ import time
 import subprocess
 import datetime
 import textwrap
+import threading
 
 import chimi.util
 
@@ -821,6 +822,7 @@ class PackageSet(object):
     def __init__(self, directory):
         self.directory = directory
         self.save_flag = False
+        self.mutex = threading.Lock()
         changa_path = os.path.join(directory, 'changa')
         charm_path = os.path.join(directory, 'charm')
 
@@ -840,10 +842,32 @@ class PackageSet(object):
                 self.save()
 
     def save(self):
-        del self.__dict__['save_flag']
-        file(os.path.join(self.directory, PackageSet.SET_FILE),
-             'w').write(yaml.dump(self))
-        self.save_flag = False
+        self.mutex.acquire()
+        mtx = self.mutex
+        try:
+            if self.save_flag:
+                # Remove some values from stuff to avoid writing those values
+                # to the YAML package-set file.
+                del self.__dict__['mutex']
+                del self.__dict__['save_flag']
+                repos = {}
+                for pkg in self.packages:
+                    if '_repository' in self.packages[pkg].__dict__:
+                        repos[pkg] = self.packages[pkg]._repository
+                        del self.packages[pkg]._repository
+
+                file(os.path.join(self.directory, PackageSet.SET_FILE),
+                     'w').write(yaml.dump(self))
+
+                for pkg in repos:
+                    self.packages[pkg]._repository = repos[pkg]
+
+                self.save_flag = False
+                self.mutex = mtx
+                # sys.stderr.write("done.\n")
+        finally:
+            self.mutex = mtx
+            self.mutex.release()
 
     def __getitem__(self, name):
         return self.packages[name]
@@ -852,6 +876,10 @@ class PackageSet(object):
     def load(self, directory):
         out = yaml.load(file(os.path.join(directory, PackageSet.SET_FILE),
                              'r').read())
+        if not 'mutex' in out.__dict__:
+            out.mutex = threading.Lock()
+
+
         if 'save_flag' in out.__dict__:
             out.save()
 
