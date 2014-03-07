@@ -393,7 +393,7 @@ class Build(object):
     status = None
     messages = None
 
-    def __init__(self, pkg, directory, config,
+    def __init__(self, pkg, config,
                  initial_status=BuildStatus.Unconfigured, initial_message=None,
                  _uuid=None, name=None, status=None, messages=None):
         self.uuid = uuid.uuid1()
@@ -568,7 +568,7 @@ class ChaNGaDefinition(PackageDefinition):
             elif _build.compiled:
                 raise ValueError('Cannot continue complete build: nothing to do.')
         else:
-            _build = Build(package, os.path.join(srcdir, build_dir), config)
+            _build = Build(package, config)
             package.add_build(_build, replace=replace) # Register this build of the package
 
 
@@ -670,8 +670,7 @@ class CharmDefinition(PackageDefinition):
                 opts = arches_regex.sub(r'\2', dirname).split('-')
             except:
                 pass
-            builds.append(Build(package, os.path.join(build_dir, dirname),
-                                BuildConfig(arch, opts, {}, []),
+            builds.append(Build(package, BuildConfig(arch, opts, {}, []),
                                 initial_status=BuildStatus.PreexistingBuild))
 
         return builds
@@ -691,8 +690,7 @@ class CharmDefinition(PackageDefinition):
             if not _build:
                 raise ValueError('No such build to continue')
         else:
-            _build = Build(package, os.path.join(package.directory, self.get_build_name(config)),
-                           config)
+            _build = Build(package, config)
             package.add_build(_build, replace=replace) # Register this build of the package
 
         if _continue:
