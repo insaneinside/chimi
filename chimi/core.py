@@ -53,6 +53,20 @@ def build_configure_flags(config):
             out.append('--%s-%s' % (wo, name))
         else:
             out.append('--with-%s=%s' % (name, value))
+
+    if len(config.extras) > 0:
+        ldflags=[]
+        cppflags=[]
+        for x in config.extras:
+            if re.search(r'^-L', x):
+                ldflags.append(x)
+            elif re.search(r'^-I', x):
+                cppflags.append(x)
+        if len(ldflags) > 0:
+            out.append('LDFLAGS=%s'%' '.join(ldflags))
+        if len(cppflags) > 0:
+            out.append('CPPFLAGS=%s'%' '.join(cppflags))
+
     return out
 
 class Command(object):
