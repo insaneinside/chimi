@@ -20,10 +20,10 @@ import sys
 import yaml
 import uuid
 import time
-import subprocess
 import datetime
 import textwrap
 import threading
+import subprocess
 
 import chimi.util
 
@@ -235,10 +235,9 @@ class BuildMessage(object):
         elif self.status.completion:
             color = 'green'
 
-        return "%12s \033[1;%dm%s:\033[0m %s" % (time_string,
-                                                 chimi.util.ANSI_COLORS[color],
-                                                 self.status.name,
-                                                 message)
+        return "%12s \033[1;%dm%s:\033[0m %s" \
+            % (time_string, chimi.util.ANSI_COLORS[color],
+               self.status.name, message)
 
 class BuildStatus:
     """A recorded build status"""
@@ -257,7 +256,7 @@ class BuildStatus:
         return self.value == BuildStatus.ConfigureFailed.value or \
             self.value == BuildStatus.CompileFailed.value or \
             self.value == BuildStatus.InterruptedByUser.value
-    
+
     @property
     def name(self):
         """Canonical name for this build status"""
@@ -401,6 +400,7 @@ class Build(object):
         self.package = pkg
         self.config = config
         self.directory = directory
+
         if not 'branch' in self.config.__dict__:
             self.config.branch = self.package.branch
 
@@ -440,11 +440,10 @@ class Build(object):
 
         self.status = status
         if message == None:
-            message = BuildStatus.default_message(status)        
+            message = BuildStatus.default_message(status)
         msg = BuildMessage(status, message)
         self.messages.append(msg)
         self.package.package_set.save_flag = True
-
         sys.stderr.write(str(msg) + "\n")
 
 class PackageDefinition(object):
@@ -483,7 +482,7 @@ class PackageDefinition(object):
         else:
             os.chdir(srcdir)
             subprocess.check_call(['git', 'pull', 'origin'])
-        
+
 
 class ChaNGaDefinition(PackageDefinition):
     """Package definition for ChaNGa"""
@@ -571,6 +570,7 @@ class ChaNGaDefinition(PackageDefinition):
         else:
             _build = Build(package, os.path.join(srcdir, build_dir), config)
             package.add_build(_build, replace=replace) # Register this build of the package
+
 
         if (not _continue) or not _build.configured:
             # Build and run a `configure` invocation
@@ -673,9 +673,9 @@ class CharmDefinition(PackageDefinition):
             builds.append(Build(package, os.path.join(build_dir, dirname),
                                 BuildConfig(arch, opts, {}, []),
                                 initial_status=BuildStatus.PreexistingBuild))
-            
+
         return builds
-        
+
     @classmethod
     def build(self, package, config, _continue=False, replace=False):
         srcdir = package.directory
@@ -704,8 +704,9 @@ class CharmDefinition(PackageDefinition):
             build_args.extend(build_configure_flags(config))
 
         build_args.extend(config.extras)
-            
+
         _build.update(BuildStatus.Compile, ' '.join(build_args))
+
         try:
             subprocess.check_call(build_args)
         except subprocess.CalledProcessError:
@@ -714,7 +715,7 @@ class CharmDefinition(PackageDefinition):
         else:
             _build.update(BuildStatus.Complete)
             return _build
-                               
+
 
 class Package(object):
     """A single package instance."""
@@ -809,7 +810,7 @@ class Package(object):
             wrapper = textwrap.TextWrapper(break_long_words=False, break_on_hyphens=False, subsequent_indent=' ' * 4)
             sys.stderr.write(wrapper.fill("\033[91mERROR:\033[0m cannot overwrite build unless --replace is given: %s" %
                                           os.path.relpath(owned.directory, chimi.run_cwd)) + "\n")
-            raise RuntimeError('Cowardly refusing to overwrite previous build') 
+            raise RuntimeError('Cowardly refusing to overwrite previous build')
 
     def add_existing_builds(self):
         for _build in self.definition.find_existing_builds(self):

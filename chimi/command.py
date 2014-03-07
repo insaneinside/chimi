@@ -159,6 +159,7 @@ def make_build_config(config):
 
         extras.extend(['-L%s' % _dir for _dir in config['L']])
         del config['L']
+
     config['extras'] = extras
 
     # The 'options' option to `build` takes a comma-separated list of Charm++
@@ -411,7 +412,7 @@ http://saga-project.github.io/saga-python/doc/adaptors/saga.adaptor.index.html
                     [], None, chimi.job._list),
             ]),
     Command('status', [], 'List recorded build/package information.',
-            [ Option('r', 'reltime', 'Use relative time stamps').store() ],
+            [Option('r', 'reltime', 'Use relative time stamps').store() ],
             None, list_items)
     ]
 
