@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 import re
+import sys
 import yaml
 import socket
 import pkg_resources
@@ -94,7 +95,7 @@ class HostBuildOption(object):
 
 class HostBuildConfig(object):
     """Build configuration values for a specific host."""
-    def __init__(self, arch, options=None):
+    def __init__(self, arch=None, options=None):
         if isinstance(arch, dict) and options == None:
             d = arch
             if 'architecture' in d:
@@ -110,6 +111,10 @@ class HostBuildConfig(object):
             self.architecture = arch
             for oname in options:
                 self.options[oname] = HostBuildOption((oname, options[oname]))
+        else:
+            self.architecture = chimi.config.get_architecture()
+            self.options = {}
+
 
     def apply(self, build_config):
         """
@@ -143,6 +148,9 @@ class HostBuildConfig(object):
                 if len(opt.apply_extras) > 0:
                     build_config.extras.extend(opt.apply_extras)
 
+    def __str__(self):
+        return str(self.__dict__)
+
 class HostRunConfig(object):
     """
     Information on how to run jobs on a specific host.  An instance of
@@ -162,7 +170,7 @@ class HostRunConfig(object):
         else:
             # 'fork' is SAGA's shell-based adaptor; it uses no job-management
             # system.
-            return 'fork'
+            return 'shell'
 
     def __init__(self, d=None):
         if isinstance(d, dict):
@@ -173,6 +181,9 @@ class HostRunConfig(object):
 
             if 'host' in d:
                 self.host = d['host']
+        else:
+            self.job_manager = self.determine_job_manager()
+            self.host = 'localhost'
 
 
 class HostConfig(object):
@@ -190,7 +201,7 @@ class HostConfig(object):
 
     """
 
-    def __init__(self, hostname, aliases=None, build=None, run=None):
+    def __init__(self, hostname=None, aliases=None, build=None, run=None):
         if isinstance(hostname, dict) and aliases==None and build == None and run == None:
             d = hostname
 
