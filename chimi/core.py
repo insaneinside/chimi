@@ -678,9 +678,14 @@ class CharmDefinition(PackageDefinition):
                            config)
             package.add_build(_build, replace=replace) # Register this build of the package
 
-        build_args = ['./build', 'ChaNGa', config.architecture]
-        build_args.extend(config.options)
-        build_args.extend(build_configure_flags(config))
+        if _continue:
+            os.chdir(os.path.join(_build.directory, 'tmp'))
+            build_args = ['gmake', 'basics', 'ChaNGa']
+        else:
+            build_args = ['./build', 'ChaNGa', config.architecture]
+            build_args.extend(config.options)
+            build_args.extend(build_configure_flags(config))
+
         build_args.extend(config.extras)
             
         _build.update(BuildStatus.Compile, ' '.join(build_args))
