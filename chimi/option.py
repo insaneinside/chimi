@@ -174,12 +174,83 @@ class OptionParser:
     """Stateless option-parser functions."""
 
     @classmethod
+    def determine_options_style(self, options):
+        is_dict_of_lists = False
+        is_list_of_tuples = False
+        is_list_of_flat_tuples = False
+        is_list_of_name_list_tuples = False
+
+        is_list = isinstance(options, list)
+        is_flat_list = is_list and all([isinstance(elt, Option) for elt in options])
+
+        if not is_flat_list:
+            is_dict_of_lists = isinstance(options, dict)\
+                and all([isinstance(elt, list) for elt in options.values()])
+
+            if not is_dict_of_lists:
+                is_list_of_tuples = is_list and all([isinstance(_tuple, tuple)
+                                                     and isinstance(_tuple[0], str)
+                                                     for _tuple in options])
+
+                if is_list_of_tuples:
+                    is_list_of_flat_tuples = \
+                        all([all([isinstance(elt, Option) for elt in _tuple[1:]]) for _tuple in options])
+                    if not is_list_of_flat_tuples:
+                        is_list_of_name_list_tuples = \
+                            all([isinstance(_tuple[1], list)
+                                 and all([isinstance(elt, Option) for elt in _tuple[1]])
+                                 for _tuple in options])
+        return (is_flat_list,
+                is_dict_of_lists,
+                is_list_of_flat_tuples,
+                is_list_of_name_list_tuples)
+    @classmethod
+    def normalize_sections(self, options):
+        """
+        Take an options-list in one of the three supported styles and
+        produce a dictionary mapping section names to options-lists.
+
+        """
+        is_flat_list, is_dict_of_lists, is_list_of_flat_tuples, is_list_of_name_list_tuples = \
+            self.determine_options_style(options)
+
+        out = {}
+        if is_flat_list:
+            out['Options'] = options
+        elif is_dict_of_lists:
+            out = options # already in the format we want
+        elif is_list_of_flat_tuples:
+            for _tuple in options:
+                out[_tuple[0]] = _tuple[1:]
+        else:                   # is_list_of_name_list_tuples
+            for name, opts in options:
+                out[name] = opts
+
+        return out
+
+
+    @classmethod
+    def flatten(self, options):
+        """Make a flat, unsectioned list of options"""
+        is_flat_list, is_dict_of_lists, is_list_of_flat_tuples, is_list_of_name_list_tuples = \
+            self.determine_options_style(options)
+
+        out = options
+
+        if not is_flat_list:
+            if is_dict_of_lists:
+                out = [item for sublist in options.values() for item in sublist]
+            elif is_list_of_flat_tuples:
+                out = [item for _tuple in options for item in _tuple[1:]]
+            elif is_list_of_name_list_tuples:
+                out = [item for _tuple in options for item in _tuple[1]]
+
+        return out
+
+    @classmethod
     def handle_options(self, option_list, arguments = sys.argv[1:], stop_args=[]):
         """Handle script arguments according to the given options array."""
-        if isinstance(option_list, dict):
-            option_list = [item for sublist in option_list.values() for item in sublist]
-        elif isinstance(option_list, list) and isinstance(option_list[0], tuple):
-            option_list = [opt for _tuple in option_list for opt in _tuple[1]]
+        option_list = self.flatten(option_list)
 
         out = {}
 
@@ -236,55 +307,45 @@ class OptionParser:
     @classmethod
     def format_help(self, option_list, usage, description):
         all_options = option_list
-        if isinstance(all_options, dict):
-            all_options = [item for sublist in option_list.values() for item in sublist]
-        elif isinstance(all_options[0], tuple):
-            all_options = [item for _tuple in option_list for item in _tuple[1]]
+
+        normalized = self.normalize_sections(option_list)
+        all_options = [opt for optlist in normalized.values() for opt in optlist]
 
         out = ''
         max_len = 0
 
-        for o in all_options:
-            optarg_length = 0
+        if len(all_options) > 0:
+            for o in all_options:
+                optarg_length = 0
 
-            if o.short_name != None or o.long_name != None:
-                # Well, that should always be true anyway.
-                # This is for the two-space left margin.
-                optarg_length += 2
-            if o.long_name != None:
-                optarg_length += len(o.long_name) + 2
-            if o.short_name != None:
-                optarg_length += len(o.short_name) + 1
-            if o.short_name != None and o.long_name != None:
-                optarg_length += 2
-                
-            if not o.argument_description == None:
-                optarg_length += 1 + len(o.argument_description)
-                if o.argument_optional:
-                    optarg_length += 3
+                if o.short_name != None or o.long_name != None:
+                    # Well, that should always be true anyway.
+                    # This is for the two-space left margin.
+                    optarg_length += 2
+                if o.long_name != None:
+                    optarg_length += len(o.long_name) + 2
+                if o.short_name != None:
+                    optarg_length += len(o.short_name) + 1
+                if o.short_name != None and o.long_name != None:
+                    optarg_length += 2
 
-            if optarg_length > max_len:
-                max_len = optarg_length
+                if not o.argument_description == None:
+                    optarg_length += 1 + len(o.argument_description)
+                    if o.argument_optional:
+                        optarg_length += 3
 
-        desc_start_col = (max_len + 2)
+                if optarg_length > max_len:
+                    max_len = optarg_length
+
+            desc_start_col = (max_len + 2)
 
         out += OptionParser.format_usage(usage)
         if description != None:
             out += "\n%s\n" % description
 
-        if isinstance(option_list, list) and len(option_list) > 0:
-            if isinstance(option_list[0], Option):
-                out += "\nOptions:\n"
-                for o in option_list:
-                    out += "%s\n" % o.to_string(desc_start_col)
-            elif isinstance(option_list[0], tuple):
-                for name, opts in option_list:
-                    out += "\n%s:\n" % name
-                    for o in opts:
-                        out += "%s\n" % o.to_string(desc_start_col)
-        elif isinstance(option_list, dict):
-            for section_name in option_list:
-                section_opts = option_list[section_name]
+        if len(all_options) > 0:
+            for section_name in normalized:
+                section_opts = normalized[section_name]
                 out += "\n%s:\n" % section_name
                 for o in section_opts:
                     out += "%s\n" % o.to_string(desc_start_col)
