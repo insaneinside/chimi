@@ -288,6 +288,7 @@ def list_items(opts, directory=None):
             sys.stdout.write("    %%-%ds   %%s\n" % max_name_len % (name, url))
         for build in pkg.builds:
             sys.stdout.write("  build \033[1m%s\033[0m:\n" % build.name)
+            sys.stdout.write("    branch: %s\n" % build.config.branch)
             sys.stdout.write("    directory: %s\n" % build.directory)
             sys.stdout.write("    source version: %s\n" % build.version)
             sys.stdout.write("    id: %s\n" % str(build.uuid))

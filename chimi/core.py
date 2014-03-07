@@ -15,6 +15,7 @@
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
 import os
 import re
+import git
 import sys
 import yaml
 import uuid
@@ -305,13 +306,70 @@ class BuildConfig(object):
     build.
 
     """
-    def __init__(self, architecture, options, settings, extras):
-        self.architecture = architecture
-        self.options = options
-        self.settings = settings
-        self.extras = extras
-        if 'cuda' in self.options:
-            settings['cuda'] = get_cuda_dir()
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize a new build configuration.
+
+        overload: __init__(config<chimi.core.HostBuildConfig>, ...)
+
+            Initialize using the default settings in the given host-build
+            configuration.  If additional arguments are given, they are applied
+            as described in the next overload before the given host-build
+            configuration is applied.
+
+        overload: __init__(arch<str>, options<list>, settings<dict>, extras<list>,
+                           branch<str>=None)
+
+           Initialize without any host-default values.
+
+        """
+        import chimi.config
+        if not isinstance(args, list):
+            args = list(args)
+
+        if len(args) > 0 and isinstance(args[0], chimi.config.HostBuildConfig):
+            self.host_build_config = args.pop(0)
+            self.__init__(*args)
+            self.host_build_config.apply(self)
+        else:
+            arch=chimi.config.get_architecture()
+            options=[]
+            settings={}
+            extras=[]
+            branch=None
+
+            if len(args) > 0:
+                arch = args.pop(0)
+            if len(args) > 0:
+                options = args.pop(0)
+            if len(args) > 0:
+                settings = args.pop(0)
+            if len(args) > 0:
+                extras = args.pop(0)
+
+            if len(args) > 0:
+                raise ValueError('too many positional arguments passed to __init__')
+
+            if 'branch' in kwargs:
+                self.branch = kwargs['branch']
+
+            if isinstance(arch, str):
+                self.architecture = arch
+                self.options = options
+                self.settings = settings
+                self.extras = extras
+                if 'cuda' in self.options:
+                    cuda_dir = get_cuda_dir()
+                    if cuda_dir != None:
+                        settings['cuda'] = cuda_dir
+            else:
+                self.architecture = chimi.config.get_architecture()
+                self.options = []
+                self.settings = {}
+                self.extras = []
+
+        self.options.sort()
+        self.extras.sort()
 
     def __str__(self):
         return str((self.architecture, self.options, self.settings, self.extras))
@@ -342,8 +400,16 @@ class Build(object):
         self.package = pkg
         self.config = config
         self.directory = directory
+        if not 'branch' in self.config.__dict__:
+            self.config.branch = self.package.branch
+
         if _uuid == None and name == None and status == None and messages == None:
-            self.name = pkg.definition.get_build_name(self.config)
+            if self.package.definition == ChaNGaDefinition:
+                self.name = pkg.definition.get_build_name(charm_name=CharmDefinition.get_build_name(self),
+                                                          package=self.package)
+            else:
+                self.name = pkg.definition.get_build_name(self)
+
             self.status = initial_status
             self.messages = [BuildMessage(initial_status, initial_message)]
         else:
@@ -384,11 +450,9 @@ class PackageDefinition(object):
     repository = None
 
     @classmethod
-    def get_build_name(self, config):
+    def get_build_name(self, build):
         """
-        Get a user-friendly name for a build of this package with build config
-        `config`.
-
+        Get a user-friendly name for build `build' of this package.
 
         """
         pass
@@ -421,8 +485,21 @@ class ChaNGaDefinition(PackageDefinition):
         super(ChaNGaDefinition, self).__init__('ChaNGa', globals()['DEFAULT_REPOSITORIES']['changa'])
 
     @classmethod
-    def get_build_name(self, config):
-        return CharmDefinition.get_build_name(config)
+    def get_build_name(self, build=None, charm_name=None, package=None):
+        if build and not charm_name:
+            charm_name = CharmDefinition.get_build_name(build)
+        base = re.sub(r'/.*$', '', charm_name)
+
+        branch = None
+        if build and not 'branch' in build.config.__dict__:
+            build.config.branch = package.repository.git.describe(all=True)
+            branch = build.config.branch
+        elif package:
+            branch = package.repository.git.describe(all=True)
+        else:
+            raise RuntimeError('couldn\'t get current branch')
+
+        return base + '+' + package.branch
 
     @classmethod
     def get_build_version(self, build):
@@ -461,7 +538,8 @@ class ChaNGaDefinition(PackageDefinition):
                     charm.add_build(charm_build, replace=replace)
                 package.package_set.save_flag = True
 
-        build_name = charm_build.name
+        # Ensure that the build directory exists, and cd into it.
+        build_name = self.get_build_name(charm_name=charm_build.name, package=package)
         build_dir = os.path.join(package.directory, 'builds')
         if not os.path.exists(build_dir):
             os.mkdir(build_dir)
@@ -524,7 +602,8 @@ class CharmDefinition(PackageDefinition):
         super('Charm++', DEFAULT_REPOSITORIES['charm'])
 
     @classmethod
-    def get_build_name(self, config):
+    def get_build_name(self, build):
+        config = build.config
         if isinstance(config,tuple):
             config = config[0]
         opts = [config.architecture]
@@ -622,6 +701,7 @@ class Package(object):
         self.package_set = package_set
         self.definition = definition
         self.directory = directory
+        self._repository = None
         if builds == None:
             self.builds = []
             if os.path.exists(directory):
@@ -631,6 +711,7 @@ class Package(object):
 
     def __setstate__(self, state):
         self.__dict__ = state
+        self._repository = None
 
         # Check for build directories that no longer exist.
         builds_to_delete = set()
@@ -646,17 +727,27 @@ class Package(object):
             self.package_set.save_flag = True
 
     @property
+    def branch(self):
+        return re.sub(r'^heads/', '', self.repository.git.describe(all=True))
+
+    @property
+    def repository(self):
+        if self._repository != None:
+            return self._repository
+        else:
+            self._repository = git.Repo(self.directory)
+            return self._repository
     def remotes(self):
         cwd = os.getcwd()
         out = []
         if os.path.exists(self.directory):
             os.chdir(self.directory)
             url_regexp = re.compile(r'^\s*Fetch URL: ')
-            git_remote_names = subprocess.check_output(['git', 'remote']).split("\n")
+            git_remote_names = self.repository.git.remote().split("\n")
             for name in git_remote_names:
                 if name == '':
                     continue
-                gitremote = subprocess.check_output(['git', 'remote', 'show', '-n', name])
+                gitremote = self.repository.git.remote('show', '-n', name)
                 url_line = filter(lambda x: url_regexp.match(x), gitremote.split("\n"))[0]
                 out.append((name, url_regexp.sub('', url_line).strip()))
             os.chdir(cwd)
