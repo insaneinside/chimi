@@ -94,7 +94,7 @@ def find_current_package_set():
 #             os.chdir(proj)
 #             subprocess.check_call(['git', 'pull', 'origin'])
 
-def helpfn(opts, *args):
+def helpfn(opts, *args, **kwargs):
     args = list(args)
     io = sys.stdout
 
@@ -102,18 +102,37 @@ def helpfn(opts, *args):
         io = args[-1]
         del args[-1]
 
+    command_list=kwargs['command_list']
     if len(args) == 0:
         io.write("Valid commands are:\n")
-        for cmd in COMMAND_LIST:
+        for cmd in command_list:
             brief = cmd.brief
             if brief == None:
                 brief = '<undocumented>'
             io.write("  %-10s  %s\n" % (cmd.name, brief))
-        io.write("\nUse `%s help COMMAND' for detailed information on a command.\n" % basename)
-        io.write("If no command is given, `%s' does nothing.\n" % basename)
+        if command_list == COMMAND_LIST:
+            io.write("\nUse `%s help COMMAND' for detailed information on a command.\n" % basename)
+            io.write("If no command is given, `%s' does nothing.\n" % basename)
+        else:
+            io.write("\nUse `%s help %s COMMAND' for detailed information on a command.\n" % (basename, ' '.join(command_list[0].parent.full_name_list)))
 
     else:
-        io.write(COMMANDS[args[0]].help)
+        command_list=kwargs['command_list']
+        commands = {}
+        for cmd in command_list:
+            commands[cmd.name] = cmd
+        cmd = commands[args.pop(0)]
+        while len(args) > 0 and len(cmd.subcommands) > 0:
+            command_list = cmd.subcommands
+            commands = {}
+            commands = {}
+            for cmd in command_list:
+                commands[cmd.name] = cmd
+            cmd = commands[args.pop(0)]
+
+        io.write(cmd.help)
+        if isinstance(cmd.subcommands, list) and len(cmd.subcommands) > 0:
+            helpfn(opts, io, command_list=cmd.subcommands)
 
 def make_build_config(config):
     if not 'arch' in config:
@@ -390,7 +409,7 @@ COMMAND_LIST = [
             [],
             "If COMMAND is given, show help for that command.  Otherwise, "+
             "show a\nlist of available commands.",
-            helpfn),
+            lambda x, *y: helpfn(x, *y, command_list=COMMAND_LIST)),
     Command('build', ['[all|changa|charm]'], 'Build a package.',
             [ Option(None, 'arch', 'Specify Charm++ build architecture.', 'ARCH').store(),
               Option(None, 'continue', 'Attempt to continue an aborted or failed build').store(),
@@ -433,7 +452,7 @@ for cmd in COMMAND_LIST:
 def show_help(io=sys.stderr, _exit=False, _exit_status=None):
     OptionParser.show_help(OPTIONS, PROGRAM_USAGE, PROGRAM_DESCRIPTION, io)
     io.write("\n")
-    helpfn(None, io)
+    helpfn(None, io, command_list=COMMAND_LIST)
     if _exit:
         exit(_exit_status)
 
@@ -451,10 +470,16 @@ def main():
         exit(1)
     elif not args[0] in COMMAND_NAMES:
         raise NotImplementedError('No such command "%s"' % args[0])
-    elif len(args) > 1 and args[1] == '-h':
-        COMMANDS['help'].call([args[0]])
+    elif len(args) > 1 and args[-1] == '-h':
+        COMMANDS['help'].call(args=args[0:-1])
     else:
-        COMMANDS[args[0]].call(args[1:])
+        try:
+            COMMANDS[args[0]].call(args=args[1:])
+        except chimi.core.CommandError as err:
+            sys.stderr.write(err.message+"\n")
+            sys.stderr.write('Try `%s help %s\' for more information.\n'%\
+                                 (chimi.command.basename, ' '.join(err.command.full_name_list)))
+            exit(1)
 
 if __name__ == "__main__":
     main()
