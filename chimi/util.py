@@ -175,5 +175,8 @@ def relative_datetime_string(time, significant_units=relative_timestamp_default_
     if significant_units != 0 and s > 0:
         significant_units -= 1
         out += '%ds ' % s
-    out += 'ago'
-    return out
+
+    if len(out) == 0:
+        out = '0s'
+
+    return out.strip()

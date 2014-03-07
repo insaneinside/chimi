@@ -142,7 +142,7 @@ class BuildMessage(object):
             use_time = time.mktime(self.time)
         if chimi.util.relative_message_timestamps:
             dt = datetime.datetime.fromtimestamp(use_time)
-            time_string = chimi.util.relative_datetime_string(dt)
+            time_string = chimi.util.relative_datetime_string(dt) + ' ago'
         else:
             time_string = time.ctime(use_time)
 
