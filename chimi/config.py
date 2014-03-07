@@ -234,8 +234,9 @@ class HostConfig(object):
         
     @property
     def matches_current_host(self):
-        """Check if this HostConfig instance matches the local host."""
-        return re.match(r'.*%s$' % socket.gethostname(), self.hostname)
+        """Check if this HostConfig instance refers to the local host."""
+        return re.search(r'.*%s$' % self.hostname, socket.gethostname()) != None or \
+            self.hostname == 'localhost'
 
 
     @classmethod
@@ -250,19 +251,25 @@ class HostConfig(object):
         """
 
         matching_files = []
+        available_files = pkg_resources.resource_listdir(__name__, 'data/host')
+        available_files = [re.sub(r'\.yaml$', '', fname) for fname in available_files]
 
         if name == None or name == 'localhost':
-            hostname = socket.gethostname().replace('.', '-')
-            available_files = pkg_resources.resource_listdir(__name__, 'data/host')
-            available_files = [re.sub(r'\.yaml$', '', fname) for fname in available_files]
-            matching_files = filter(lambda avf: re.match(r'.*%s$' % avf, hostname), available_files)
+            name = socket.gethostname()
+        match = self.find_host_file_by_name(name)
+
+        if match == None:
+            name = name.replace('.', '-')
+            matching_files = filter(lambda avf: re.match(r'.*%s$' % avf, name), available_files)
         else:
-            matching_files = [self.find_host_file_by_name(name)]
+            matching_files = [match]
 
         if len(matching_files) > 0 and matching_files[0] != None:
             host_data_file = 'data/host/%s' % matching_files[0]
             if pkg_resources.resource_exists(__name__, host_data_file):
                 return HostConfig(yaml.load(pkg_resources.resource_string(__name__, host_data_file)))
+        else:
+            return HostConfig()
 
     @classmethod
     def find_host_file_by_name(self, name):
