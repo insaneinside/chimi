@@ -410,6 +410,9 @@ class Build(object):
             else:
                 self.name = pkg.definition.get_build_name(self)
 
+            if not self.directory:
+                self.directory = pkg.definition.get_build_directory(self)
+
             self.status = initial_status
             self.messages = [BuildMessage(initial_status, initial_message)]
         else:
@@ -457,6 +460,11 @@ class PackageDefinition(object):
         """
         pass
 
+    @classmethod
+    def get_build_directory(self, build):
+        """Get the directory in which a build's files should go"""
+        pass
+
     def __init__(self, name, repo):
         self.name = name
         self.repository = repo
@@ -500,6 +508,10 @@ class ChaNGaDefinition(PackageDefinition):
             raise RuntimeError('couldn\'t get current branch')
 
         return base + '+' + package.branch
+
+    @classmethod
+    def get_build_directory(self, build):
+        return os.path.join(build.package.directory, 'builds', build.name)
 
     @classmethod
     def get_build_version(self, build):
@@ -611,6 +623,10 @@ class CharmDefinition(PackageDefinition):
         options.sort()
         opts.extend(options)
         return '-'.join(opts)
+
+    @classmethod
+    def get_build_directory(self, build):
+        return os.path.join(build.package.directory, build.name)
 
     @classmethod
     def get_build_version(self, build):
