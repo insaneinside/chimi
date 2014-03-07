@@ -69,19 +69,43 @@ def build_configure_flags(config):
 
     return out
 
+class CommandError(Exception):
+    pass
+
+class CommandUsageError(CommandError,ValueError):
+    def __init__(self, cmd):
+        self.command = cmd
+        super(ValueError, self).__init__('Missing required arguments to "%s".\nUsage: %s' % (cmd.name, cmd.usage))
+
+class SubcommandError(CommandError, NotImplementedError):
+    def __init__(self, cmd, subcmd):
+        self.command = cmd
+        self.subcommand = subcmd
+        super(NotImplementedError, self).__init__('Command `%s\' has no such subcommand, `%s\'' % (cmd.name, subcmd))
+
 class Command(object):
     """Describes a program command"""
 
-    def __init__(self, name, args, brief, options, detail, func):
+    def __init__(self, name, args, brief, options, detail,
+                 callback=None,
+                 subcommands=None):
         self._name = name
         self.arguments_usage = args
         self.options = options
         self.help_brief = brief
         self.help_detail = detail
-        self.func = func
+        self.callback = callback
         self.hidden = name[0] == '*'
         self.required_arg_count = 0
-        
+        self.subcommands=subcommands
+
+        self.parent = None
+        if subcommands != None:
+            for cmd in self.subcommands:
+                cmd.parent = self
+        else:
+            self.subcommands = []
+
         for arg in self.arguments_usage:
             if arg[0] != '[':
                 self.required_arg_count += 1
@@ -101,44 +125,80 @@ class Command(object):
         return self.help_detail
 
     @property
+    def full_name_list(self):
+        """Get the "full name" of the command, including parent command names."""
+        parts = []
+        part = self
+        while part != None:
+            parts.insert(0, part.name)
+            part = part.parent
+        return parts
+
+    @property
     def usage(self):
         """Usage string for this command"""
-        parts = [self.name]
+
+        parts = self.full_name_list
+        parts.insert(0, chimi.command.basename)
+
         if len(self.options) > 0:
             parts.append('[OPTION]...')
         parts.extend(self.arguments_usage)
+
         return ' '.join(parts)
 
     @property
     def help(self):
         """Detailed `help` output string for this command"""
-        desc = self.help_brief
-        if self.help_detail:
-            desc = "%s\n\n%s" % (self.help_brief, self.help_detail)
-        return chimi.option.OptionParser.format_help(self.options,
-                                                     ' '.join([sys.argv[0], self.usage]),
-                                                     desc)
+        return \
+            "\n".join([chimi.option.OptionParser.format_help(self.options,
+                                                             self.usage,
+                                                             self.help_brief),
+                       self.help_detail + "\n" if self.help_detail else ''])
 
     @property
     def num_args(self):
         """Maximum number of arguments accepted"""
         return len(self.arguments_usage)
 
-    def call(self, aa):
+    def call(self, opts={}, args=[], kwargs={}):
         """Invoke the sub-command"""
-        opts_out = {}
+        opts_out = opts
+        subcommand_dict = {}
+        for cmd in self.subcommands:
+            subcommand_dict[cmd.name] = cmd
+
         if len(self.options) > 0:
-            opts = list(self.options)
-            opts.append(chimi.Option('h', 'help', 'Show help for the %s command' % self.name)\
-                            .handle(lambda:  sys.stdout.write(self.help)))
-            opts_out = chimi.OptionParser.handle_options(self.options, aa)
+            options = chimi.OptionParser.flatten(self.options)
 
-        if len(aa) < self.required_arg_count:
-            sys.stderr.write("%s\n" % self.usage)
-            raise ValueError('Missing required arguments to "%s"' % self.name)
-        
-        return self.func(opts_out, *aa)
+            def impromptu_help(self):
+                sys.stdout.write(self.help)
+                exit(0)
 
+            options.append(chimi.Option('h', 'help', 'Show help for the %s command' % self.name)\
+                            .handle(lambda: impromptu_help(self)))
+            stop_set = subcommand_dict.keys()
+            opts_out = chimi.OptionParser.handle_options(options, args, stop_set)
+
+
+        if len(self.subcommands) == 0:
+            if len(args) < self.required_arg_count:
+                raise CommandUsageError(self)
+            return self.callback(opts_out, *args, **kwargs)
+        else:
+            if args[0] in subcommand_dict:
+                cmd = subcommand_dict[args[0]]
+                del args[0]
+
+                if len(args) < cmd.required_arg_count:
+                    raise CommandUsageError(cmd)
+                elif self.callback != None:
+                    opts_out, _kwargs = self.callback(opts_out, *args)
+                    cmd.call(opts=opts_out, args=args, kwargs=_kwargs)
+                else:
+                    cmd.call(opts=opts_out, args=args)
+            else:
+                raise SubcommandError(self, args[0])
 
 class BuildMessage(object):
     """A recorded build message"""
