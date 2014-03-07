@@ -80,6 +80,10 @@ for usage and sub-command information.
 
 ## Use
 
+Chimi is a "commandlet"-based program with a usage style similar to that of
+e.g. [git](http://git-scm.org).  It provides built-in documentation, available
+via the `help` command for all commands.
+
 To-do: provide detailed info on each of Chimi's commands...
 
 
