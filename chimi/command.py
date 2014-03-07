@@ -270,6 +270,7 @@ def bootstrap(opts, directory):
         raise RuntimeError('Directory is already initialized')
     else:
         ps = PackageSet(directory)
+        ps.save_flag = True
         ps.save()
 
 def list_items(opts, directory=None):
