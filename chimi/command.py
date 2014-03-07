@@ -78,21 +78,20 @@ def find_current_package_set():
                                  "Do you need to run `%s init .'?\n" % basename)
             exit(1)
 
-# def fetch_sources(opts, dest_dir=None):
+def fetch_sources(opts, dest_dir=None):
+    if dest_dir == None:
+        dest_dir = find_current_package_set().directory
+    if not os.path.exists(dest_dir):
+        os.makedirs(dest_dir)
 
-#     if dest_dir == None:
-#         dest_dir = os.getcwd()
-#     if not os.path.exists(dest_dir):
-#         os.makedirs(dest_dir)
-
-#     for proj in DEFAULT_REPOSITORIES:
-#         repo = DEFAULT_REPOSITORIES[proj]
-#         os.chdir(dest_dir)
-#         if not os.path.exists(proj):
-#             subprocess.check_call(['git', 'clone', repo, proj])
-#         else:
-#             os.chdir(proj)
-#             subprocess.check_call(['git', 'pull', 'origin'])
+    for proj in DEFAULT_REPOSITORIES:
+        repo = DEFAULT_REPOSITORIES[proj]
+        os.chdir(dest_dir)
+        if not os.path.exists(proj):
+            subprocess.check_call(['git', 'clone', repo, proj])
+        # else:
+        #     os.chdir(proj)
+        #     subprocess.check_call(['git', 'pull', 'origin'])
 
 def helpfn(opts, *args, **kwargs):
     args = list(args)
@@ -326,10 +325,9 @@ from chimi import Command
 COMMAND_LIST = [
     Command('init', ['DIR'], 'Bootstrap Chimi configuration from existing files.',
             [], None, bootstrap),
-    # Command('fetch', ['[DESTDIR]'],
-    #         [],
-    #         'Fetch or update program sources.',
-    #         None, fetch_sources),
+    Command('fetch', ['[DESTDIR]'], 'Fetch or update program sources.',
+            [],
+            None, fetch_sources),
     Command('help', ['[COMMAND]'], 'Show help on available commands.',
             [],
             "If COMMAND is given, show help for that command.  Otherwise, "+
