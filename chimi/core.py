@@ -851,11 +851,12 @@ class PackageSet(object):
         self.mutex.acquire()
         mtx = self.mutex
         try:
-            if self.save_flag:
+            if not 'save_flag' in self.__dict__ or self.save_flag:
                 # Remove some values from stuff to avoid writing those values
                 # to the YAML package-set file.
                 del self.__dict__['mutex']
-                del self.__dict__['save_flag']
+                if 'save_flag' in self.__dict__:
+                    del self.__dict__['save_flag']
                 repos = {}
                 for pkg in self.packages:
                     if '_repository' in self.packages[pkg].__dict__:
