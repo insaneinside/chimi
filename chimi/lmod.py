@@ -14,6 +14,10 @@
 # The GNU General Public License version 2 may be found at
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
 
+@property
+def available():
+    return os.environ.has_key('LMOD_CMD')
+
 def load(x, version=None):
     if version != None:
         x = "%s/%s" % (x, version)

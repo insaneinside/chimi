@@ -37,7 +37,7 @@ DEFAULT_REPOSITORIES={
 basename = os.path.basename(sys.argv[0])
 
 def load_platform_resources():
-    if os.environ.has_key('LMOD_CMD'):
+    if chimi.lmod.available:
         chimi.lmod.load('cuda')
         chimi.lmod.load('git')
     else:
