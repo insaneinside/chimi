@@ -765,6 +765,8 @@ class Package(object):
         else:
             self._repository = git.Repo(self.directory)
             return self._repository
+
+    @property
     def remotes(self):
         cwd = os.getcwd()
         out = []
