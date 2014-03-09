@@ -214,7 +214,7 @@ def make_build_config(config):
     return(config)
 
 
-def build(config, which):
+def build(config, which='changa'):
     which_args = ['all', 'changa', 'charm']
 
     if type(which) != str:
