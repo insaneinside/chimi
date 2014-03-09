@@ -247,6 +247,11 @@ def build(config, which):
         noact = True
         del config['noact']
 
+    purge = False
+    if 'purge' in config:
+        purge = config['purge']
+        del config['purge']
+
     config = make_build_config(config)
     config.options.sort()
 
@@ -268,16 +273,23 @@ def build(config, which):
         which = [which]
 
     for item in which:
-        if ps[item].have_build(config) and ps[item].find_build(config).status == BuildStatus.Complete:
-            sys.stderr.write("Skipping build of \"%s\": already built\n" % item)
-        else:
-            try:
-                ps[item].build(config, _continue, replace)
-            except KeyboardInterrupt:
-                ps.save_flag = True
-                ps[item].find_build(config).update(BuildStatus.InterruptedByUser)
-                ps.save()
-                exit(1)
+        package = ps.packages[item]
+        if purge == 'all':
+            package.purge_builds()
+        elif purge:
+            package.purge_builds(config)
+        else:               # We're actually building something.
+            _build = package.find_build(config)
+            if _build and _build.compiled:
+                sys.stderr.write("Skipping build of \"%s\": already built\n" % item)
+            else:
+                try:
+                    ps[item].build(config, _continue, replace)
+                except KeyboardInterrupt:
+                    ps.save_flag = True
+                    ps[item].find_build(config).update(BuildStatus.InterruptedByUser)
+                    ps.save()
+                    exit(1)
     ps.save()
 
 def bootstrap(opts, directory):
@@ -366,6 +378,13 @@ COMMAND_LIST = [
              ('Builds management options',
               Option(None, 'continue', 'Attempt to continue an aborted or failed build').store(),
               Option(None, 'replace', 'Replace any existing build with this configuration').store(),
+              Option(None, 'purge',
+                     'Remove one or all builds for the selected package(s).  '
+                     'When given as `--purge=all`, all builds of the selected '
+                     'package will be purged; when given as `--purge` (i.e. '
+                     'without "=all"), only the build matching specified '
+                     'configuration options will be purged.',
+                     '[all]').store(),
               ),
              ('Misc. options',
               Option('n', 'noact', 'Don\'t actually run the build; print configuration and exit.').store(),
