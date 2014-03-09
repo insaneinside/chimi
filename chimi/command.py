@@ -391,7 +391,9 @@ COMMAND_LIST = [
               Option(None, 'force', 'Force build even if arguments to -I or -L don\'t exist.').store(),
               ),
              ],
-            None, build),
+            'The target, if not given, defaults to "changa".  The ChaNGa '
+            'package definition will initiate a matching Charm++ build if a '
+            'suitable one is not found.', build),
     Command('job', ['CMD', '[ARG]...'], 'Manage job(s) on local or remote nodes.',
             [Option('H', 'host', 'Manipulate jobs on remote HOST via SSH [default: local]',
                     '[USER@]HOST').store(),
