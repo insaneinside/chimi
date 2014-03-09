@@ -104,7 +104,7 @@ def helpfn(opts, *args, **kwargs):
     assert(isinstance(command_list, list))
 
     if len(args) == 0:
-        io.write("Valid commands are:\n")
+        io.write("Valid %scommands are:\n"%('sub' if command_list != COMMAND_LIST else ''))
         cmds_usage = {}
 
         # Build a dict of the short-style usage strings for each command, and
