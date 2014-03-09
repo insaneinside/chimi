@@ -103,11 +103,25 @@ def helpfn(opts, *args, **kwargs):
     command_list=kwargs['command_list']
     if len(args) == 0:
         io.write("Valid commands are:\n")
+        cmds_usage = {}
+
+        # Build a dict of the short-style usage strings for each command, and
+        # keep track of the maximum length we get.
+        max_usage_len = 0
+        for cmd in command_list:
+            cmds_usage[cmd.name] = cmd.short_usage
+            l = len(cmds_usage[cmd.name])
+            if l > max_usage_len:
+                max_usage_len = l
+        # Use that maximum-length to create a format string with nice alignment
+        # for the brief-documentation blurb for each command.
+        fmt_str = '  %%-%ds  %%s\n' % max_usage_len
+
         for cmd in command_list:
             brief = cmd.brief
             if brief == None:
                 brief = '<undocumented>'
-            io.write("  %-10s  %s\n" % (cmd.name, brief))
+            io.write(fmt_str % (cmds_usage[cmd.name], brief))
         if command_list == COMMAND_LIST:
             io.write("\nUse `%s help COMMAND' for detailed information on a command.\n" % basename)
             io.write("If no command is given, `%s' does nothing.\n" % basename)

@@ -150,6 +150,13 @@ class Command(object):
         return ' '.join(parts)
 
     @property
+    def short_usage(self):
+        """Short usage string containing only command name and arguments"""
+        return self.name + ((' ' + ' '.join(self.arguments_usage))
+                            if isinstance(self.arguments_usage, list)
+                            else '')
+
+    @property
     def help(self):
         """Detailed `help` output string for this command"""
         return \
