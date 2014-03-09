@@ -19,6 +19,7 @@
 # This file is ported from Ruby, so please excuse the YARDoc comments.
 
 import sys
+import re
 
 # Option-data storage/representation.  Used to declare/define a single program
 # option.
@@ -57,14 +58,28 @@ class Option:
     # @param [block] handlerProc Option handler.  If the option takes an argument,
     #     it will be passed to the block.
     def __init__(self, short_name, long_name, description,
-                 argument_description = None, argument_optional = False):
+                 argument_description=None, argument_optional=None):
         if short_name == None and long_name == None:
             raise ArgumentError.new('Short name and long name cannot both be `nil\'!')
         self.short_name = short_name
         self.long_name = long_name
         self.description = description
         self.argument_description = argument_description
-        self.argument_optional = argument_optional
+
+        if isinstance(argument_optional,type(None)):
+            # Allow specifying that the argument is optional by bracketing its
+            # description.
+            if argument_description != None and \
+                    argument_description.startswith('[') and \
+                    argument_description.endswith(']'):
+                self.argument_optional = True
+                self.argument_description = re.sub(r'^\[(.+)\]$', r'\1',
+                                                   self.argument_description)
+            else:
+                self.argument_optional = False
+        else:
+            self.argument_optional = argument_optional
+
         self.callback = None
 
     # Specify a callable object to invoke when the option is recieved.  This
