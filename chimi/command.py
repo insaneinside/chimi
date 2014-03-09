@@ -101,6 +101,8 @@ def helpfn(opts, *args, **kwargs):
         del args[-1]
 
     command_list=kwargs['command_list']
+    assert(isinstance(command_list, list))
+
     if len(args) == 0:
         io.write("Valid commands are:\n")
         cmds_usage = {}
