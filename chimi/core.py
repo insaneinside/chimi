@@ -20,6 +20,7 @@ import sys
 import yaml
 import uuid
 import time
+import shutil
 import datetime
 import textwrap
 import threading
@@ -785,7 +786,17 @@ class Package(object):
     def build(self, *args):
         return self.definition.build(self, *args)
 
-    def find_build(self, config):
+    def purge_builds(self, config=None):
+        """
+        Purge any builds matching the supplied configuration.  If no
+        configuration is given, purge all builds.
+
+        """
+        _builds = self.find_builds(config) if config else self.builds
+        for _build in _builds:
+            shutil.rmtree(_build.directory)
+            self.builds.remove(_build)
+
         if not isinstance(config,BuildConfig):
             raise ValueError('Invalid argument type `%s\' to `find_build`'%type(config))
         matches = filter(lambda x: x.config == config, self.builds)
