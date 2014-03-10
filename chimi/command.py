@@ -27,13 +27,6 @@ import chimi
 import chimi.lmod
 from chimi import *
 
-global DEFAULT_REPOSITORIES
-DEFAULT_REPOSITORIES={
-    'charm' : 'http://charm.cs.uiuc.edu/gerrit/charm',
-    'changa' : 'http://charm.cs.uiuc.edu/gerrit/changa',
-    'utility' : 'http://charm.cs.illinois.edu/gerrit/cosmo/utility.git'
-    }
-
 basename = os.path.basename(sys.argv[0])
 
 def load_platform_resources():
