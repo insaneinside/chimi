@@ -493,10 +493,7 @@ class PackageDefinition(object):
 class ChaNGaDefinition(PackageDefinition):
     """Package definition for ChaNGa"""
     name = 'ChaNGa'
-
-    @classmethod
-    def __init__(self):
-        super(ChaNGaDefinition, self).__init__('ChaNGa', globals()['DEFAULT_REPOSITORIES']['changa'])
+    repository = chimi.settings.DEFAULT_REPOSITORIES['changa']
 
     @classmethod
     def get_build_name(self, build=None, charm_name=None, package=None):
@@ -616,9 +613,7 @@ class CharmDefinition(PackageDefinition):
     """Package definition for Charm++"""
     Architectures = []
     name = 'Charm++'
-
-    def __init__(self):
-        super('Charm++', DEFAULT_REPOSITORIES['charm'])
+    repository = chimi.settings.DEFAULT_REPOSITORIES['charm']
 
     @classmethod
     def get_build_name(self, build):
