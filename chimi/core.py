@@ -784,6 +784,7 @@ class Package(object):
 
 
     def build(self, *args):
+        """Build the package."""
         return self.definition.build(self, *args)
 
     def purge_builds(self, config=None):
