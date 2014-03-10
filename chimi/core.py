@@ -280,6 +280,15 @@ class BuildStatus:
     def __init__(self, value):
         self.value = value
 
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __gt__(self, other):
+        return self.value > other.value
+
+    def __eq__(self, other):
+        return self.value == other.value
+
     @property
     def completion(self):
         """Whether the status indicates a completion state"""
