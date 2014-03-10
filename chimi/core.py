@@ -387,6 +387,8 @@ class BuildConfig(object):
 
             if 'branch' in kwargs:
                 self.branch = kwargs['branch']
+            else:
+                self.branch = 'master'
 
             if isinstance(arch, str):
                 self.architecture = arch
@@ -599,6 +601,8 @@ class ChaNGaDefinition(PackageDefinition):
             _build = Build(package, config)
             package.add_build(_build, replace=replace) # Register this build of the package
 
+        if package.branch != config.branch:
+            check_call(['git', 'checkout', config.branch], cwd=package.directory)
 
         if (not _continue) or not _build.configured:
             # Build and run a `configure` invocation

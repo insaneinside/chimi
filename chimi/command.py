@@ -192,8 +192,13 @@ def make_build_config(config):
     if len(negate_options) > 0:
         config.options = list(set(config.options).difference(set(negate_options)))
 
+    kwargs={}
+    if 'branch' in config:
+        kwargs['branch'] = config['branch']
+
     # Make the config into an actual build configuration.
-    config = chimi.core.BuildConfig(config['arch'], config['options'], config['settings'], config['extras'])
+    config = chimi.core.BuildConfig(config['arch'], config['options'], config['settings'], config['extras'],
+                                    **kwargs)
 
     # Load additional build settings from the host-data file.
     hi = chimi.HostConfig.load()
