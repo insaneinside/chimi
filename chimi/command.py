@@ -303,6 +303,9 @@ def list_items(opts, directory=None):
     for pkg_name in ps.packages:
         pkg = ps.packages[pkg_name]
         sys.stdout.write("package \033[1m%s\033[0m:\n" % pkg.definition.name)
+        if not os.path.exists(pkg.directory):
+            sys.stdout.write("  uninitialized\n")
+            continue
         sys.stdout.write("  remotes:\n")
         remotes = pkg.remotes
         max_name_len = max([len(name) for name, url in remotes])

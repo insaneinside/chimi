@@ -853,13 +853,8 @@ class PackageSet(object):
         changa_path = os.path.join(directory, 'changa')
         charm_path = os.path.join(directory, 'charm')
 
-        changa = None
-        charm = None
-
-        if os.path.exists(os.path.join(directory, charm_path)):
-            charm =  Package(self, CharmDefinition, charm_path)
-        if os.path.exists(changa_path):
-            changa = Package(self, ChaNGaDefinition, changa_path)
+        charm =  Package(self, CharmDefinition, charm_path)
+        changa = Package(self, ChaNGaDefinition, changa_path)
 
         self.packages = { 'charm': charm, 'changa': changa }
 
