@@ -406,7 +406,6 @@ class Build(object):
         self.uuid = uuid.uuid1()
         self.package = pkg
         self.config = config
-        self.directory = directory
 
         if not 'branch' in self.config.__dict__:
             self.config.branch = self.package.branch
@@ -418,9 +417,6 @@ class Build(object):
             else:
                 self.name = pkg.definition.get_build_name(self)
 
-            if not self.directory:
-                self.directory = pkg.definition.get_build_directory(self)
-
             self.status = initial_status
             self.messages = [BuildMessage(initial_status, initial_message)]
         else:
@@ -428,6 +424,8 @@ class Build(object):
             self.name = name
             self.status = status
             self.messages = messages
+
+        self.directory = pkg.definition.get_build_directory(self)
 
     @property
     def configured(self):
