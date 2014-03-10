@@ -798,19 +798,33 @@ class Package(object):
             shutil.rmtree(_build.directory)
             self.builds.remove(_build)
 
+    def find_builds(self, config):
+        """Find all builds matching `config` for this package instance."""
         if not isinstance(config,BuildConfig):
             raise ValueError('Invalid argument type `%s\' to `find_build`'%type(config))
-        matches = filter(lambda x: x.config == config, self.builds)
+        return filter(lambda x: x.config == config, self.builds)
+
+
+    def find_build(self, config):
+        """Find a build matching `config` for this package instance."""
+        matches = self.find_builds(config)
         if len(matches) > 0:
             return matches[0]
         else:
             return None
 
     def have_build(self, obj):
+        """
+        Check if a build matching `obj` is present for this package instance.
+
+        """
+
         if isinstance(obj, Build):
             return self.find_build(obj.config) != None
-        else:
+        elif isinstance(obj, BuildConfig):
             return self.find_build(obj) != None
+        else:
+            raise ValueError('Parameter to `have_build` must be a Build or BuildConfig')
 
     def add_build(self, _build, replace=False):
         owned = self.find_build(_build.config)
