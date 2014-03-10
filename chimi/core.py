@@ -27,6 +27,33 @@ import threading
 import subprocess
 
 import chimi.util
+import chimi.settings
+
+def check_call(call, cwd=None):
+    oldcwd = os.getcwd();
+
+    if cwd != None and cwd != oldcwd:
+        # the directory might not even exist if no-act is enabled, so don't
+        # actually switch directory if it is [enabled].
+        if not chimi.settings.noact:
+            os.chdir(cwd)
+    else:
+        cwd = oldcwd
+
+    if len(call) == 1 and isinstance(call[0], list):
+        call = call[0]
+
+    result = 0
+
+    if chimi.settings.noact:
+        sys.stderr.write('would execute [in %s]: %s\n' % (os.path.relpath(cwd, oldcwd), ' '.join(call)))
+    else:
+        result = subprocess.check_call(call)
+
+    if not chimi.settings.noact:
+        os.chdir(oldcwd)
+
+    return result
 
 def get_cuda_dir():
     """Attempt to find the location of the CUDA toolkit on the local machine."""
@@ -449,7 +476,10 @@ class Build(object):
             message = BuildStatus.default_message(status)
         msg = BuildMessage(status, message)
         self.messages.append(msg)
-        self.package.package_set.save_flag = True
+
+        if not chimi.settings.noact:
+            self.package.package_set.save_flag = True
+
         sys.stderr.write(str(msg) + "\n")
 
 class PackageDefinition(object):
@@ -481,13 +511,11 @@ class PackageDefinition(object):
         srcdir = package.directory
         if not os.path.exists(srcdir):
             parent_dir = os.path.dirname(srcdir)
-            if not os.path.exists(parent_dir):
+            if not os.path.exists(parent_dir) and not chimi.settings.noact:
                 os.makedirs(parent_dir)
-            os.chdir(parent_dir)
-            subprocess.check_call(['git', 'clone', self.repository, srcdir])
+            check_call(['git', 'clone', self.repository, srcdir], cwd=parent_dir)
         else:
-            os.chdir(srcdir)
-            subprocess.check_call(['git', 'pull', 'origin'])
+            check_call(['git', 'pull', 'origin'], cwd=srcdir)
 
 
 class ChaNGaDefinition(PackageDefinition):
@@ -534,9 +562,9 @@ class ChaNGaDefinition(PackageDefinition):
     @classmethod
     def build(self, package, config, _continue=False, replace=False):
         srcdir = package.directory
-        os.chdir(srcdir)
-        if not os.path.exists('builds'):
-            os.mkdir('builds')
+        builds_dir = os.path.join(srcdir, 'builds')
+        if not os.path.exists(builds_dir) and not chimi.settings.noact:
+            os.mkdir(builds_dir)
 
         # Find a matching Charm++ build.
         charm = package.package_set['charm']
@@ -555,13 +583,9 @@ class ChaNGaDefinition(PackageDefinition):
 
         # Ensure that the build directory exists, and cd into it.
         build_name = self.get_build_name(charm_name=charm_build.name, package=package)
-        build_dir = os.path.join(package.directory, 'builds')
-        if not os.path.exists(build_dir):
+        build_dir = os.path.join(builds_dir, build_name)
+        if not os.path.exists(build_dir) and not chimi.settings.noact:
             os.mkdir(build_dir)
-        build_dir = os.path.join(build_dir, build_name)
-        if not os.path.exists(build_dir):
-            os.mkdir(build_dir)
-        os.chdir(build_dir)
 
         _build = None
         if _continue:
@@ -586,7 +610,7 @@ class ChaNGaDefinition(PackageDefinition):
 
             _build.update(BuildStatus.Configure, ' '.join(configure_invocation))
             try:
-                subprocess.check_call(configure_invocation)
+                check_call(configure_invocation, cwd=build_dir)
             except subprocess.CalledProcessError:
                 _build.update(BuildStatus.ConfigureFailed)
             except KeyboardInterrupt:
@@ -601,7 +625,7 @@ class ChaNGaDefinition(PackageDefinition):
         if _build.configured:
             _build.update(BuildStatus.Compile)
             try:
-                subprocess.check_call(['make'])
+                check_call(['make'], cwd=_build.directory)
             except subprocess.CalledProcessError:
                 _build.update(BuildStatus.CompileFailed)
             else:
@@ -679,7 +703,6 @@ class CharmDefinition(PackageDefinition):
     @classmethod
     def build(self, package, config, _continue=False, replace=False):
         srcdir = package.directory
-        os.chdir(srcdir)
 
         if len(CharmDefinition.Architectures) == 0:
             self.load_architectures(srcdir)
@@ -694,10 +717,13 @@ class CharmDefinition(PackageDefinition):
             _build = Build(package, config)
             package.add_build(_build, replace=replace) # Register this build of the package
 
+        build_cwd = None
+        build_args = None
         if _continue:
-            os.chdir(os.path.join(_build.directory, 'tmp'))
+            build_cwd = os.path.join(_build.directory, 'tmp')
             build_args = ['gmake', 'basics', 'ChaNGa']
         else:
+            build_cwd = srcdir
             build_args = ['./build', 'ChaNGa', config.architecture]
             build_args.extend(config.options)
             build_args.extend(build_configure_flags(config))
@@ -707,7 +733,7 @@ class CharmDefinition(PackageDefinition):
         _build.update(BuildStatus.Compile, ' '.join(build_args))
 
         try:
-            subprocess.check_call(build_args)
+            check_call(build_args, cwd=build_cwd)
         except subprocess.CalledProcessError:
             _build.update(BuildStatus.CompileFailed)
             return _build
@@ -790,8 +816,10 @@ class Package(object):
         """
         _builds = self.find_builds(config) if config else self.builds
         for _build in _builds:
-            shutil.rmtree(_build.directory)
-            self.builds.remove(_build)
+            sys.stderr.write("%s build \"%s\"\n" % ('purging' if not chimi.settings.noact else 'would purge', _build.name))
+            if not chimi.settings.noact:
+                shutil.rmtree(_build.directory)
+                self.builds.remove(_build)
 
     def find_builds(self, config):
         """Find all builds matching `config` for this package instance."""
@@ -825,7 +853,8 @@ class Package(object):
         owned = self.find_build(_build.config)
         if owned == None or owned.directory != _build.directory:
             self.builds.append(_build)
-            self.package_set.save_flag = True
+            if not chimi.settings.noact:
+                self.package_set.save_flag = True
         elif replace:
             sys.stderr.write("\033[31mWARNING:\033[0m replacing build \"%s\" at %s\n" %
                              (owned.name, os.path.relpath(owned.directory, self.package_set.directory)))
@@ -859,11 +888,12 @@ class PackageSet(object):
         self.packages = { 'charm': charm, 'changa': changa }
 
     def __del__(self):
-        if 'save_flag' in self.__dict__:
+        if 'save_flag' in self.__dict__ and not chimi.settings.noact:
             if self.save_flag:
                 self.save()
 
     def save(self):
+        assert(chimi.settings.noact == False)
         self.mutex.acquire()
         mtx = self.mutex
         try:

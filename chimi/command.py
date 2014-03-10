@@ -74,6 +74,7 @@ def fetch_sources(opts, dest_dir=None):
     if dest_dir == None:
         dest_dir = find_current_package_set().directory
     if not os.path.exists(dest_dir):
+    if not os.path.exists(dest_dir) and not chimi.settings.noact:
         os.makedirs(dest_dir)
 
     for proj in DEFAULT_REPOSITORIES:
@@ -235,11 +236,6 @@ def build(config, which='changa'):
         replace = config['replace']
         del config['replace']
 
-    noact = False
-    if 'noact' in config:
-        noact = True
-        del config['noact']
-
     purge = False
     if 'purge' in config:
         purge = config['purge']
@@ -248,12 +244,6 @@ def build(config, which='changa'):
     config = make_build_config(config)
     config.options.sort()
 
-    if noact:
-        print(config.architecture)
-        print(config.options)
-        print(config.settings)
-        print(config.extras)
-        return
 
     if which == 'all':
         which = ['charm', 'changa']
@@ -279,11 +269,13 @@ def build(config, which='changa'):
                 try:
                     ps[item].build(config, _continue, replace)
                 except KeyboardInterrupt:
-                    ps.save_flag = True
                     ps[item].find_build(config).update(BuildStatus.InterruptedByUser)
-                    ps.save()
+                    if not chimi.settings.noact:
+                        ps.save_flag = True
+                        ps.save()
                     exit(1)
-    ps.save()
+    if not chimi.settings.noact:
+        ps.save()
 
 def bootstrap(opts, directory):
     directory = os.path.abspath(directory)
