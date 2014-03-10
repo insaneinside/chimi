@@ -432,7 +432,7 @@ class Build(object):
 
     def __init__(self, pkg, config,
                  initial_status=BuildStatus.Unconfigured, initial_message=None,
-                 _uuid=None, name=None, status=None, messages=None):
+                 _uuid=None, name=None, messages=None):
         self.uuid = uuid.uuid1()
         self.package = pkg
         self.config = config
@@ -447,15 +447,17 @@ class Build(object):
             else:
                 self.name = pkg.definition.get_build_name(self)
 
-            self.status = initial_status
             self.messages = [BuildMessage(initial_status, initial_message)]
         else:
             self.uuid = _uuid
             self.name = name
-            self.status = status
             self.messages = messages
 
         self.directory = pkg.definition.get_build_directory(self)
+
+    @property
+    def status(self):
+        return self.messages[-1].status
 
     @property
     def configured(self):
@@ -472,8 +474,6 @@ class Build(object):
 
     def update(self, status, message=None):
         """Update the build's status."""
-
-        self.status = status
         if message == None:
             message = BuildStatus.default_message(status)
         msg = BuildMessage(status, message)
