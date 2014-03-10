@@ -71,20 +71,15 @@ def find_current_package_set():
             exit(1)
 
 def fetch_sources(opts, dest_dir=None):
+    ps = find_current_package_set()
     if dest_dir == None:
-        dest_dir = find_current_package_set().directory
-    if not os.path.exists(dest_dir):
+        dest_dir = ps.directory
     if not os.path.exists(dest_dir) and not chimi.settings.noact:
         os.makedirs(dest_dir)
 
-    for proj in DEFAULT_REPOSITORIES:
-        repo = DEFAULT_REPOSITORIES[proj]
-        os.chdir(dest_dir)
-        if not os.path.exists(proj):
-            subprocess.check_call(['git', 'clone', repo, proj])
-        # else:
-        #     os.chdir(proj)
-        #     subprocess.check_call(['git', 'pull', 'origin'])
+    for proj in ps.packages:
+        ps.packages[proj].fetch()
+
 
 def helpfn(opts, *args, **kwargs):
     args = list(args)

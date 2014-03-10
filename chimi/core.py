@@ -507,8 +507,9 @@ class PackageDefinition(object):
 
     @classmethod
     def fetch(self, package):
-        """Fetch sources for the defined package and """
+        """Fetch or update sources for the given package instance."""
         srcdir = package.directory
+
         if not os.path.exists(srcdir):
             parent_dir = os.path.dirname(srcdir)
             if not os.path.exists(parent_dir) and not chimi.settings.noact:
@@ -741,6 +742,9 @@ class CharmDefinition(PackageDefinition):
             _build.update(BuildStatus.Complete)
             return _build
 
+class UtilityDefinition(PackageDefinition):
+    name = 'utility'
+    repository = chimi.settings.DEFAULT_REPOSITORIES['utility']
 
 class Package(object):
     """A single package instance."""
@@ -785,6 +789,9 @@ class Package(object):
         else:
             self._repository = git.Repo(self.directory)
             return self._repository
+
+    def fetch(self):
+        self.definition.fetch(self)
 
     @property
     def remotes(self):
@@ -879,13 +886,13 @@ class PackageSet(object):
         self.directory = directory
         self.save_flag = False
         self.mutex = threading.Lock()
-        changa_path = os.path.join(directory, 'changa')
-        charm_path = os.path.join(directory, 'charm')
 
-        charm =  Package(self, CharmDefinition, charm_path)
-        changa = Package(self, ChaNGaDefinition, changa_path)
-
-        self.packages = { 'charm': charm, 'changa': changa }
+        self.packages = { 'charm': Package(self, CharmDefinition,
+                                           os.path.join(directory, 'charm'))
+                          'changa': Package(self, ChaNGaDefinition,
+                                            os.path.join(directory, 'changa')),
+                          'utility': Package(self, UtilityDefinition,
+                                             os.path.join(directory, 'utility'))}
 
     def __del__(self):
         if 'save_flag' in self.__dict__ and not chimi.settings.noact:
