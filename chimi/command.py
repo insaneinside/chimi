@@ -461,14 +461,19 @@ def show_help(io=sys.stderr, _exit=False, _exit_status=None):
     if _exit:
         exit(_exit_status)
 
-OPTIONS = [ Option('h', 'help', 'Show this help.').handle(lambda *x: show_help(sys.stdout, True, 0)) ]
+OPTIONS = [ Option('h', 'help', 'Show this help.').handle(lambda *x: show_help(sys.stdout, True, 0)),
+            Option('n', 'noact', 'Don\'t actually change anything or run any commands.').store(),
+            ]
 
 
 def main():
     chimi.run_cwd = os.getcwd()
     load_platform_resources()
     args = sys.argv[1:]
-    OptionParser.handle_options(OPTIONS, args, COMMAND_NAMES)
+    opts_out = OptionParser.handle_options(OPTIONS, args, COMMAND_NAMES)
+
+    if 'noact' in opts_out:
+        chimi.settings.noact = opts_out['noact']
 
     if len(args) == 0:
         OptionParser.show_usage(PROGRAM_USAGE, sys.stderr)
