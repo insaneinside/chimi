@@ -909,7 +909,7 @@ class PackageSet(object):
         self.mutex = threading.Lock()
 
         self.packages = { 'charm': Package(self, CharmDefinition,
-                                           os.path.join(directory, 'charm'))
+                                           os.path.join(directory, 'charm')),
                           'changa': Package(self, ChaNGaDefinition,
                                             os.path.join(directory, 'changa')),
                           'utility': Package(self, UtilityDefinition,
