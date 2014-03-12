@@ -137,7 +137,7 @@ def helpfn(opts, *args, **kwargs):
         if isinstance(cmd.subcommands, list) and len(cmd.subcommands) > 0:
             helpfn(opts, io, command_list=cmd.subcommands)
 
-def make_build_config(config):
+def make_build_config(config, force=False):
     if not 'arch' in config:
         config['arch'] = chimi.config.get_architecture()
     if not 'settings' in config:
@@ -241,7 +241,7 @@ def build(config, which='changa'):
         purge = config['purge']
         del config['purge']
 
-    config = make_build_config(config)
+    config = make_build_config(config, force=force)
     config.options.sort()
 
 
@@ -265,11 +265,11 @@ def build(config, which='changa'):
             package.purge_builds(names=[name.strip() for name in purge.split(',')])
         else:               # We're actually building something.
             _build = package.find_build(config)
-            if _build and _build.compiled:
+            if _build and _build.compiled and not force:
                 sys.stderr.write("Skipping build of \"%s\": already built\n" % item)
             else:
                 try:
-                    ps[item].build(config, _continue, replace)
+                    ps[item].build(config, _continue, replace, force)
                 except KeyboardInterrupt:
                     ps[item].find_build(config).update(BuildStatus.InterruptedByUser)
                     if not chimi.settings.noact:

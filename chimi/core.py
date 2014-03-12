@@ -572,7 +572,7 @@ class ChaNGaDefinition(PackageDefinition):
             return []
 
     @classmethod
-    def build(self, package, config, _continue=False, replace=False):
+    def build(self, package, config, _continue=False, replace=False, force=False):
         srcdir = package.directory
         builds_dir = os.path.join(srcdir, 'builds')
         if not os.path.exists(builds_dir) and not chimi.settings.noact:
@@ -604,7 +604,7 @@ class ChaNGaDefinition(PackageDefinition):
             _build = package.find_build(config)
             if not _build:
                 raise ValueError('No such build to continue')
-            elif _build.compiled:
+            elif _build.compiled and not force:
                 raise ValueError('Cannot continue complete build: nothing to do.')
         else:
             _build = Build(package, config)
@@ -715,7 +715,7 @@ class CharmDefinition(PackageDefinition):
         return builds
 
     @classmethod
-    def build(self, package, config, _continue=False, replace=False):
+    def build(self, package, config, _continue=False, replace=False, force=False):
         srcdir = package.directory
 
         if len(CharmDefinition.Architectures) == 0:
@@ -824,9 +824,9 @@ class Package(object):
         return out
 
 
-    def build(self, *args):
+    def build(self, *args, **kwargs):
         """Build the package."""
-        return self.definition.build(self, *args)
+        return self.definition.build(self, *args, **kwargs)
 
     def purge_builds(self, config=None, names=None):
         """
