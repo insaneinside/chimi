@@ -147,6 +147,7 @@ class HostBuildConfig(object):
                 # configuration.
                 if len(opt.apply_extras) > 0:
                     build_config.extras.extend(opt.apply_extras)
+        build_config.options.sort()
 
     def __str__(self):
         return str(self.__dict__)
