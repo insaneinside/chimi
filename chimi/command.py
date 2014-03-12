@@ -183,14 +183,11 @@ def make_build_config(config):
                 config['settings'][key] = value
             else:
                 if opt[0] == '-':
-                    negate_options.append(opt)
+                    negate_options.append(opt[1:])
                 else:
                     config['options'].append(opt)
     else:
         config['options'] = []
-
-    if len(negate_options) > 0:
-        config.options = list(set(config.options).difference(set(negate_options)))
 
     kwargs={}
     if 'branch' in config:
@@ -204,6 +201,9 @@ def make_build_config(config):
     hi = chimi.HostConfig.load()
     if hi != None:
         hi.build.apply(config)
+
+    if len(negate_options) > 0:
+        config.options = list(set(config.options).difference(set(negate_options)))
 
     return(config)
 
