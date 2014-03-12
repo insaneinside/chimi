@@ -259,8 +259,10 @@ def build(config, which='changa'):
         package = ps.packages[item]
         if purge == 'all':
             package.purge_builds()
-        elif purge:
-            package.purge_builds(config)
+        elif isinstance(purge,bool) and purge:
+            package.purge_builds(config=config)
+        elif isinstance(purge,str):
+            package.purge_builds(names=[name.strip() for name in purge.split(',')])
         else:               # We're actually building something.
             _build = package.find_build(config)
             if _build and _build.compiled:
@@ -367,12 +369,14 @@ COMMAND_LIST = [
               Option(None, 'continue', 'Attempt to continue an aborted or failed build').store(),
               Option(None, 'replace', 'Replace any existing build with this configuration').store(),
               Option(None, 'purge',
-                     'Remove one or all builds for the selected package(s).  '
-                     'When given as `--purge=all`, all builds of the selected '
-                     'package will be purged; when given as `--purge` (i.e. '
-                     'without "=all"), only the build matching specified '
-                     'configuration options will be purged.',
-                     '[all]').store(),
+                     'Remove one or all builds for the selected package(s):\n'
+                     '`--purge=all` will purge all builds of the selected '
+                     'package.\n'
+                     '`--purge=BUILD[,BUILD]...` will purge all builds with name '
+                     'or ID matching specified BUILD(s).\n'
+                     '`--purge` (without arguments) will purge only the build '
+                     'matching specified configuration options.',
+                     '[all|BUILD[,BUILD]...]').store(),
               ),
              ('Misc. options',
               Option('n', 'noact', 'Don\'t actually run the build; print configuration and exit.').store(),

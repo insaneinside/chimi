@@ -828,13 +828,21 @@ class Package(object):
         """Build the package."""
         return self.definition.build(self, *args)
 
-    def purge_builds(self, config=None):
+    def purge_builds(self, config=None, names=None):
         """
-        Purge any builds matching the supplied configuration.  If no
-        configuration is given, purge all builds.
+        Purge any builds matching the supplied configuration or names/UUIDs.
+        If no configuration or names are given, purge all builds.
 
         """
-        _builds = self.find_builds(config) if config else self.builds
+        _builds = None
+        if config:
+            _builds = self.find_builds(config)
+        elif names:
+            _builds = filter(lambda _build: _build.name in names or str(_build.uuid) in names,
+                             self.builds)
+        else:
+            _builds = list(self.builds)
+
         for _build in _builds:
             sys.stderr.write("%s build \"%s\"\n" % ('purging' if not chimi.settings.noact else 'would purge', _build.name))
             if not chimi.settings.noact:
