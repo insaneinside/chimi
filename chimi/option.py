@@ -163,20 +163,27 @@ class Option:
 
 
     @classmethod
-    def wrap_text(self, s, start_col=0, max_col=75):
+    def wrap_text(self, _in, start_col=0, max_col=75):
         width = max_col - start_col
 
-        if len(s) <= width:
-            return s
-        else:
-            out = ''
+        if len(_in) <= width:
+            return _in
+
+        strs=_in.split('\n')
+        out = ''
+
+        for s in strs:
+            if out != '':
+                out += "\n" + ' ' * start_col
             while len(s) > width:
                 front = s[0:width]
                 parts = front.rpartition(' ')
                 s = parts[2].strip() + s[width:]
-                out += "%s\n%s" % (parts[0], ' ' * start_col)
+
+                front = parts[0]
+                out += "%s\n%s" % (front, ' ' * start_col)
             out += s.strip()
-            return out
+        return out
 
 
     def get_preferred_key(self):
