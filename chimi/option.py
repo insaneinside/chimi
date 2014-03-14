@@ -157,35 +157,9 @@ class Option:
                 out += self.argument_description
                 out += ']'
 
-        return ('%%-%ds%%s' % wrap_start_col) % (out,
-                                                 self.wrap_text(self.description, wrap_start_col,
-                                                                Option.LINE_WRAP_COLUMN))
-
-
-    @classmethod
-    def wrap_text(self, _in, start_col=0, max_col=75):
-        width = max_col - start_col
-
-        if len(_in) <= width:
-            return _in
-
-        strs=_in.split('\n')
-        out = ''
-
-        for s in strs:
-            if out != '':
-                out += "\n" + ' ' * start_col
-            while len(s) > width:
-                front = s[0:width]
-                parts = front.rpartition(' ')
-                s = parts[2].strip() + s[width:]
-
-                front = parts[0]
-                out += "%s\n%s" % (front, ' ' * start_col)
-            out += s.strip()
-        return out
-
-
+        return ('%%-%ds%%s' % wrap_start_col) % (out, chimi.util.wrap_text(self.description,
+                                                                           wrap_start_col,
+                                                                           Option.LINE_WRAP_COLUMN))
     def get_preferred_key(self):
         if self.long_name != None:
             return self.long_name

@@ -113,7 +113,7 @@ def helpfn(opts, *args, **kwargs):
             brief = cmd.brief
             if brief == None:
                 brief = '<undocumented>'
-            io.write(fmt_str % (cmds_usage[cmd.name], chimi.Option.wrap_text(brief, max_usage_len + 4)))
+            io.write(fmt_str % (cmds_usage[cmd.name], chimi.util.wrap_text(brief, max_usage_len + 4)))
 
         if command_list == COMMAND_LIST:
             io.write("\nUse `%s help COMMAND' for detailed information on a command.\n" % basename)

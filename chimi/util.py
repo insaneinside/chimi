@@ -33,6 +33,39 @@ ANSI_STYLES={'bold': 1, 'underline': 4, 'blink': 25}
 relative_message_timestamps = False
 relative_timestamp_default_siguns = 2
 
+def wrap_text(self, _in, start_col=0, max_col=75):
+    """
+    Wrap text within the given column boundaries, filling the area before
+    `start_col` with spaces.
+
+    This method was created because the author was having problems with
+    TextWrapper -- not necessarily because he wanted to reinvent the wheel.
+
+    """
+
+    width = max_col - start_col
+
+    if len(_in) <= width:
+        return _in
+
+    strs=_in.split('\n')
+    out = ''
+
+    for s in strs:
+        if out != '':
+            out += "\n" + ' ' * start_col
+        while len(s) > width:
+            front = s[0:width]
+            parts = front.rpartition(' ')
+            s = parts[2].strip() + s[width:]
+
+            front = parts[0]
+            out += "%s\n%s" % (front, ' ' * start_col)
+        out += s.strip()
+    return out
+
+
+
 
 # This function was copied from a Stack Overflow answer at
 # <https://stackoverflow.com/a/377028>
