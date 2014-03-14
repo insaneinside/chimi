@@ -25,6 +25,7 @@ import datetime
 import textwrap
 import threading
 import subprocess
+from collections import Counter
 
 import chimi.util
 import chimi.settings
@@ -807,11 +808,20 @@ class Package(object):
         self.__dict__ = state
         self._repository = None
 
-        # Check for build directories that no longer exist.
+        # Check for build directories that no longer exist, and builds with the
+        # same path.
         builds_to_delete = set()
         for build in self.builds:
             if not os.path.exists(build.directory):
                 builds_to_delete.add(build)
+
+        counts = Counter([b.directory for b in self.builds])
+        for _dir in counts:
+            if counts[_dir] > 1:
+                # Discard all but the most-recently-updated build.
+                _builds = sorted(filter(lambda x: x.directory == _dir, self.builds))
+                builds_to_delete.update(set(_builds[0:-1]))
+
         if len(builds_to_delete) > 0:
             self.builds = list(set(self.builds).difference(builds_to_delete))
             # Set a flag on the parent package-set to indicate that internal
