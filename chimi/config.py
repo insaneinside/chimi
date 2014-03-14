@@ -157,10 +157,10 @@ class HostBuildConfig(object):
     def __str__(self):
         return str(self.__dict__)
 
-class HostRunConfig(object):
+class HostJobConfig(object):
     """
     Information on how to run jobs on a specific host.  An instance of
-    HostRunConfig currently has the following properties:
+    HostJobConfig currently has the following properties:
 
     job_manager: batch-job management system employed on the host.
 
@@ -181,14 +181,14 @@ class HostRunConfig(object):
     def __init__(self, d=None):
         if isinstance(d, dict):
             if 'job-manager' in d:
-                self.job_manager = d['job-manager']
+                self.manager = d['manager']
             else:
-                self.job_manager = self.determine_job_manager()
+                self.manager = self.determine_job_manager()
 
             if 'host' in d:
                 self.host = d['host']
         else:
-            self.job_manager = self.determine_job_manager()
+            self.manager = self.determine_job_manager()
             self.host = 'localhost'
 
 
@@ -203,14 +203,13 @@ class HostConfig(object):
 
     build: a HostBuildConfig instance.
 
-    run: a HostRunConfig instance.
+    jobs: a HostJobConfig instance.
 
     """
 
-    def __init__(self, hostname=None, aliases=None, build=None, run=None):
-        if isinstance(hostname, dict) and aliases==None and build == None and run == None:
-            d = hostname
 
+    def __init__(self, d=None, aliases=None, build=None, jobs=None):
+        if isinstance(d, dict) and aliases==None and build == None and jobs == None:
             if 'hostname' in d:
                 self.hostname = d['hostname']
 
@@ -224,11 +223,12 @@ class HostConfig(object):
             else:
                 self.build = HostBuildConfig({})
 
-            if 'run' in d:
-                self.run = HostRunConfig(d['run'])
+            if 'jobs' in d:
+                self.jobs = HostJobConfig(d['jobs'])
             else:
-                self.run = HostRunConfig({})
+                self.jobs = HostJobConfig({})
         else:
+            hostname = d
             if hostname:
                 self.hostname = hostname
             else:
@@ -244,10 +244,10 @@ class HostConfig(object):
             else:
                 self.build = HostBuildConfig()
 
-            if run:
-                self.run = run
+            if jobs:
+                self.jobs = jobs
             else:
-                self.run = HostRunConfig()
+                self.jobs = HostJobConfig()
         
     @property
     def matches_current_host(self):

@@ -23,10 +23,10 @@ build:
       # cuda toolkit location is detected via environment variable, which is
       # set by `lmod`, which itself is loaded if the `LMOD_CMD` env var is set
       # (which it is on Lonestar4).
-run:
+jobs:
   # Job-management system in use on the host.  Any management system sypported
   # by SAGA-Python (<http://saga-project.github.io/saga-python/>) should work.
-  job-manager: slurm
+  manager: slurm
 
   # This field gives the preferred hostname to use when logging in via SSH.
   host: stampede.tacc.utexas.edu
