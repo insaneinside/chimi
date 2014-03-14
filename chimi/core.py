@@ -199,40 +199,69 @@ class Command(object):
         return len(self.arguments_usage)
 
     def call(self, opts={}, args=[], kwargs={}):
-        """Invoke the sub-command"""
-        opts_out = opts
+        """
+        Invoke the command.  If the command has sub-commands, it will be
+        invoked and the result used to pass additional options and keyword
+        arguments to the subcommand.
+
+        opts: pre-parsed options dict to pass directly to the command's
+            handler.
+
+        args: positional arguments.
+
+        kwargs: keyword arguments; these are usually /not/ specified directly.
+
+        """
+        opts_out = dict(opts)
         subcommand_dict = {}
         for cmd in self.subcommands:
             subcommand_dict[cmd.name] = cmd
 
+        options = []
         if len(self.options) > 0:
-            options = chimi.OptionParser.flatten(self.options)
+            options.extend(chimi.OptionParser.flatten(self.options))
 
-            def impromptu_help(self):
-                sys.stdout.write(self.help)
-                exit(0)
 
-            options.append(chimi.Option('h', 'help', 'Show help for the %s command' % self.name)\
-                            .handle(lambda: impromptu_help(self)))
-            stop_set = subcommand_dict.keys()
-            opts_out = chimi.OptionParser.handle_options(options, args, stop_set)
+        # Make "-h" work for printing the help string for any command
+        def impromptu_help(self):
+            sys.stdout.write(self.help)
+            exit(0)
+        options.append(chimi.Option('h', 'help', 'Show help for the %s command' % self.name)\
+                        .handle(lambda: impromptu_help(self)))
 
+        # Parse options for this command.
+        stop_set = subcommand_dict.keys()
+        try:
+            opts_out.update(chimi.OptionParser.handle_options(options, args, stop_set))
+        except Exception as err:
+            sys.stderr.write('%s: %s' % (self.name, err.message))
+            return 3;
 
         if len(self.subcommands) == 0:
+            # Primary-command invocation.
             if len(args) < self.required_arg_count:
                 raise CommandUsageError(self)
             return self.callback(opts_out, *args, **kwargs)
         else:
-            if args[0] in subcommand_dict:
+            # Secondary-command invocation.
+            if not len(args) > 0:
+                raise CommandUsageError(self)
+            elif args[0] in subcommand_dict:
                 cmd = subcommand_dict[args[0]]
                 del args[0]
 
                 if len(args) < cmd.required_arg_count:
                     raise CommandUsageError(cmd)
                 elif self.callback != None:
+                    # Invoke the parent command's handler to do e.g. common
+                    # initialization for subcommands, and then invoke the
+                    # subcommand using the results of that call.
                     opts_out, _kwargs = self.callback(opts_out, *args)
                     cmd.call(opts=opts_out, args=args, kwargs=_kwargs)
                 else:
+                    # No handler for parent command, so invoke the subcommand
+                    # "normally" (we still provide the additional options from
+                    # the parent command).
                     cmd.call(opts=opts_out, args=args)
             else:
                 raise SubcommandError(self, args[0])
