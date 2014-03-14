@@ -203,7 +203,9 @@ def make_build_config(config, force=False,
     # Load additional build settings from the host-data file.
     hi = chimi.HostConfig.load()
     if hi != None:
-        hi.build.apply(config)
+        hi.build.apply(config, negated_options=negate_options)
+    else:
+        sys.stderr.write("WARNING: no host configuration found; using default settings.\n")
 
     # Remove invalid options
     if package_set:

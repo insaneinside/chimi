@@ -116,37 +116,42 @@ class HostBuildConfig(object):
             self.options = {}
 
 
-    def apply(self, build_config):
+    def apply(self, build_config, negated_options=[]):
         """
         Apply the host-specific build configuration to an individual package's
         build configuration
 
+        build_config: the build configuration to modify
+
+        negated_options: list of options that should not be applied.
+
         """
         assert(isinstance(build_config, chimi.core.BuildConfig))
         for optname in self.options:
-            opt = self.options[optname]
-            # Set the build option if the host data specifies it should be used
-            # by default.
-            if opt.enable_by_default:
-                build_config.options.append(optname)
+            if not optname in negated_options:
+                opt = self.options[optname]
+                # Set the build option if the host data specifies it should be used
+                # by default.
+                if opt.enable_by_default:
+                    build_config.options.append(optname)
 
-            # If this option is set for the build (possibly by us), apply any
-            # additional options/settings/extra command-line arguments
-            # specified in the host-data file.
-            if optname in build_config.options:
-                # Enable all prerequisites for the option.
-                build_config.options.extend(list(set(opt.prerequisite_options).
-                                                 difference(set(build_config.options))))
+                # If this option is set for the build (possibly by us), apply any
+                # additional options/settings/extra command-line arguments
+                # specified in the host-data file.
+                if optname in build_config.options:
+                    # Enable all prerequisites for the option.
+                    build_config.options.extend(list(set(opt.prerequisite_options).
+                                                     difference(set(build_config.options))))
 
-                # Apply settings defined by the host configuration.
-                if len(opt.apply_settings) > 0:
-                    for sname in opt.apply_settings:
-                        build_config.settings[sname] = opt.apply_settings[sname]
+                    # Apply settings defined by the host configuration.
+                    if len(opt.apply_settings) > 0:
+                        for sname in opt.apply_settings:
+                            build_config.settings[sname] = opt.apply_settings[sname]
 
-                # Apply extra build arguments specified by the host
-                # configuration.
-                if len(opt.apply_extras) > 0:
-                    build_config.extras.extend(opt.apply_extras)
+                    # Apply extra build arguments specified by the host
+                    # configuration.
+                    if len(opt.apply_extras) > 0:
+                        build_config.extras.extend(opt.apply_extras)
         build_config.options.sort()
 
     def __str__(self):
