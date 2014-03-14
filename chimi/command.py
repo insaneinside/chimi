@@ -104,6 +104,7 @@ def helpfn(opts, *args, **kwargs):
             l = len(cmds_usage[cmd.name])
             if l > max_usage_len:
                 max_usage_len = l
+
         # Use that maximum-length to create a format string with nice alignment
         # for the brief-documentation blurb for each command.
         fmt_str = '  %%-%ds  %%s\n' % max_usage_len
@@ -112,7 +113,8 @@ def helpfn(opts, *args, **kwargs):
             brief = cmd.brief
             if brief == None:
                 brief = '<undocumented>'
-            io.write(fmt_str % (cmds_usage[cmd.name], brief))
+            io.write(fmt_str % (cmds_usage[cmd.name], chimi.Option.wrap_text(brief, max_usage_len + 4)))
+
         if command_list == COMMAND_LIST:
             io.write("\nUse `%s help COMMAND' for detailed information on a command.\n" % basename)
             io.write("If no command is given, `%s' does nothing.\n" % basename)
