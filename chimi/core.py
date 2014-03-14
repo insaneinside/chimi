@@ -397,7 +397,7 @@ class BuildConfig(object):
             if 'branch' in kwargs:
                 self.branch = kwargs['branch']
             else:
-                self.branch = 'master'
+                self.branch = None
 
             if isinstance(arch, str):
                 self.architecture = arch
@@ -418,7 +418,7 @@ class BuildConfig(object):
         self.extras.sort()
 
     def __str__(self):
-        return str((self.architecture, self.options, self.settings, self.extras))
+        return str((self.architecture, self.branch, self.options, self.settings, self.extras))
 
     def __eq__(self, other):
         if not isinstance(other, BuildConfig):
@@ -824,9 +824,12 @@ class Package(object):
         return out
 
 
-    def build(self, *args, **kwargs):
+    def build(self, config, **kwargs):
         """Build the package."""
-        return self.definition.build(self, *args, **kwargs)
+        if not isinstance(config.branch, str):
+            config.branch = self.branch
+
+        return self.definition.build(self, config, **kwargs)
 
     def purge_builds(self, config=None, names=None):
         """

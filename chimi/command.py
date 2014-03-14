@@ -300,6 +300,7 @@ def list_items(opts, directory=None):
         if not os.path.exists(pkg.directory):
             sys.stdout.write("  uninitialized\n")
             continue
+        sys.stdout.write("  current branch: %s\n" % pkg.branch)
         sys.stdout.write("  remotes:\n")
         remotes = pkg.remotes
         max_name_len = max([len(name) for name, url in remotes])
