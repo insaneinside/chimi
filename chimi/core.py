@@ -677,11 +677,139 @@ class ChaNGaDefinition(PackageDefinition):
 
         return _build
 
+class CharmArchitecture(object):
+    """Stores metadata for a Charm++ build architecture"""
+    def __init__(self, parent, name,
+                 options=None, compilers=None, fortran_compilers=None,
+                 is_base=False):
+        self.parent = parent
+        self.name = name
+
+        self._options = None
+        self._compilers = None
+        self._fortran_compilers = None
+
+        if isinstance(options, list) and len(options) > 0:
+            self._options = sorted(options)
+
+        if isinstance(compilers, list) and len(compilers) > 0:
+            self._compilers = sorted(compilers)
+
+        if isinstance(fortran_compilers, list) and len(fortran_compilers) > 0:
+            self._fortran_compilers = sorted(fortran_compilers)
+
+        self.is_base = is_base
+
+    def merge_property_with_inherited(self, propnames):
+        # Get all values for a property as specified in both the current object
+        # and all ancestors.
+        if isinstance(propnames, str):
+            propname = propnames
+            out = []
+            ref = self
+            while ref:
+                sys.stderr.write(repr(ref)+"\n")
+                if hasattr(ref, propname):
+                    rprop = getattr(ref, propname)
+                    if isinstance(rprop, list):
+                        out.extend(rprop)
+                ref = ref.parent
+            return out
+        else:
+            _range = range(len(propnames))
+            out = [[] for i in _range]
+
+            ref = self
+            while ref:
+                sys.stderr.write(repr(ref)+"\n")
+                for i in _range:
+                    if hasattr(ref, propnames[i]):
+                        rprop = getattr(ref, propnames[i])
+                        if isinstance(rprop, list):
+                            out[i].extend(rprop)
+            return out
+
+    @property
+    def all_options(self):
+        """
+        Convenience method for fetching all options, compilers, and fortran
+        compilers that may be specified for this architecture.
+
+        """
+        allprops = self.merge_property_with_inherited(('_options', '_compilers', '_fortran_compilers'))
+        out = allprops[0]
+        out.extend(allprops[1])
+        out.extend(allprops[2])
+        return out
+
+    @property
+    def options(self):
+        o = self.merge_property_with_inherited('_options')
+        o.sort()
+        return o
+
+    @property
+    def compilers(self):
+        o = self.merge_property_with_inherited('_compilers')
+        o.sort()
+        return o
+
+    @property
+    def fortran_compilers(self):
+        o = self.merge_property_with_inherited('_fortran_compilers')
+        o.sort()
+        return o
+
+    def has_option(self, optname):
+        if optname in self.options:
+            return True
+        elif self.parent:
+            return self.parent.has_option(optname)
+        else:
+            return False
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        opts_string=''
+        if hasattr(self, '_options') and self._options and \
+                len(self._options) > 0:
+            opts_string = 'options=(%s)' % ' '.join(self._options)
+
+        compilers_string = ''
+        if hasattr(self, '_compilers') and self._compilers and \
+                len(self._compilers) > 0:
+            compilers_string = 'compilers=(%s)' % ' '.join(self._compilers)
+
+        fcompilers_string=''
+        if hasattr(self, '_fortran_compilers') and self._fortran_compilers and \
+                len(self._fortran_compilers) > 0:
+            fcompilers_string = 'fortran_compilers=(%s)' % ' '.join(self._fortran_compilers)
+
+        body_string = ' '.join([opts_string, compilers_string, fcompilers_string]).strip()
+
+        name_string = ''
+        if self.parent:
+            name_string = '%s(%s)' % (self.name, self.parent.name)
+        else:
+            name_string = self.name
+
+        return '<%s: %s%s>' \
+            % (self.__class__.__name__,
+               name_string,
+               (' ' + body_string) if len(body_string) > 0 else '')
+
 class CharmDefinition(PackageDefinition):
     """Package definition for Charm++"""
-    Architectures = []
     name = 'Charm++'
     repository = chimi.settings.DEFAULT_REPOSITORIES['charm']
+
+    Architectures = {}
+
+    COMPILERS_REGEXP = re.compile(r'^cc-([^.]+).h$')
+    OPTIONS_REGEXP = re.compile(r'^conv-mach-([^.]+).h$')
+
 
     @classmethod
     def get_build_name(self, build):
@@ -704,15 +832,74 @@ class CharmDefinition(PackageDefinition):
         if os.path.exists(version_file):
             return file(version_file, 'r').read().strip()
 
+
+    @classmethod
+    def get_arch_options_and_compilers(self, package_directory, arch):
+        """
+        Fetch available options and compilers for a specific architecture from
+        a Charm++ package tree.
+
+        """
+        _dir = os.path.join(package_directory, 'src', 'arch', arch)
+        entries = os.listdir(_dir)
+        compilers = [CharmDefinition.COMPILERS_REGEXP.sub(r'\1', ce) \
+                         for ce in filter(lambda x: CharmDefinition.COMPILERS_REGEXP.match(x),
+                                          entries)]
+        options = [CharmDefinition.OPTIONS_REGEXP.sub(r'\1', ce) \
+                       for ce in filter(lambda x: CharmDefinition.OPTIONS_REGEXP.match(x),
+                                        entries)]
+        fortran_compilers_list = ['g95', 'gfortran', 'absoft', 'pgf90', 'ifc', 'ifort']
+
+        fortran_compilers = filter(lambda x: x in fortran_compilers_list, options)
+
+        # Remove fortran compilers from options
+        options = filter(lambda x: not x in fortran_compilers, options)
+
+        return (options, compilers, fortran_compilers)
+
     @classmethod
     def load_architectures(self, directory):
+        """
+        Initialize CharmDefinition.Architectures.
+
+        This method loads Charm++ architecture data -- including available
+        build-options and compilers for each architecture -- from a Charm++
+        package tree.
+
+        """
+
         # We *could* make a native Python version of this shell command, but
         # since we're trying to recreate the same values that Charm++'s "build"
         # script comes up with, it's probably better to just copy the command
         # straight out of that script.
-        run = "cd %s ; ls -1 | egrep -v '(^CVS)|(^shmem$)|(^mpi$)|(^sim$)|(^net$)|(^multicore$)|(^util$)|(^common$)|(^uth$)|(^conv-mach-fix.sh$)|(^win32$)|(^win64$)|(^paragon$)|(^lapi$)|(^cell$)|(^gemini_gni$)|(^pami$)|(^template$)|(^cuda$)'" % (os.path.join(directory, 'src/arch'))
+        run = "cd %s ; ls -1 | egrep -v '(^CVS)|(^shmem$)|(^mpi$)|(^sim$)|(^net$)|(^multicore$)|(^util$)|(^common$)|(^uth$)|(^conv-mach-fix.sh$)|(^win32$)|(^win64$)|(^paragon$)|(^lapi$)|(^cell$)|(^gemini_gni$)|(^pami$)|(^template$)|(^cuda$)'" % (os.path.join(directory, 'src', 'arch'))
         out = subprocess.check_output(run, shell=True)
-        CharmDefinition.Architectures = out.split("\n")
+        architecture_names = filter(lambda x: len(x) > 0, out.split("\n"))
+
+        # Now fetch the available compilers and options for each Charm++
+        # architecture.
+        common = CharmArchitecture(None, 'common', *self.get_arch_options_and_compilers(directory, 'common'),
+                                   is_base=True)
+        CharmDefinition.Architectures['common'] = common
+
+        for name in architecture_names:
+            parent = common
+
+            base_name=re.sub(r'^([^-]+)-.*$', r'\1', name)
+            if base_name != name \
+                    and os.path.isdir(os.path.join(directory, 'src', 'arch', base_name)):
+                if not base_name in CharmDefinition.Architectures:
+                    # Load the "base" compiler/option sets for the architecture.
+                    CharmDefinition.Architectures[base_name] = \
+                        CharmArchitecture(common, base_name,
+                                          *self.get_arch_options_and_compilers(directory, base_name),
+                                          is_base=True)
+
+                parent = CharmDefinition.Architectures[base_name]
+
+            CharmDefinition.Architectures[name] = \
+                CharmArchitecture(parent, name,
+                                  *self.get_arch_options_and_compilers(directory, name))
 
     @classmethod
     def find_existing_builds(self, package, build_dir=None):
@@ -723,7 +910,7 @@ class CharmDefinition(PackageDefinition):
                 self.load_architectures(package.directory)
             else:
                 raise RuntimeError('Cannot load architectures from non-Charm++ build tree!')
-        arches = list(CharmDefinition.Architectures)
+        arches = list(CharmDefinition.Architectures.keys())
         arches.sort(key=lambda x: len(x), reverse=True)
 
         # Find all entries under `build_dir` that match available architectures.

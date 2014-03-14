@@ -137,7 +137,8 @@ def helpfn(opts, *args, **kwargs):
         if isinstance(cmd.subcommands, list) and len(cmd.subcommands) > 0:
             helpfn(opts, io, command_list=cmd.subcommands)
 
-def make_build_config(config, force=False):
+def make_build_config(config, force=False,
+                      package_set=None):
     if not 'arch' in config:
         config['arch'] = chimi.config.get_architecture()
     if not 'settings' in config:
@@ -202,8 +203,21 @@ def make_build_config(config, force=False):
     if hi != None:
         hi.build.apply(config)
 
-    if len(negate_options) > 0:
-        config.options = list(set(config.options).difference(set(negate_options)))
+    # Remove invalid options
+    if package_set:
+        # Load architecture definitions if not already loaded.
+        if not len(CharmDefinition.Architectures) > 0:
+            CharmDefinition.load_architectures(package_set.packages['charm'].directory)
+
+        arch = CharmDefinition.Architectures[config.architecture]
+        invalid_options = list(set(config.options).difference(set(arch.all_options)))
+
+        if len(invalid_options) > 0:
+            for opt in invalid_options:
+                sys.stderr.write('\033[1;31mERROR:\033[0m Option `%s\' is invalid for architecture `%s\'\n' % \
+                                     (opt, config.architecture))
+            config.options = list(set(config.options).intersection(set(arch.options)))
+            config.options.sort()
 
     return(config)
 
@@ -241,7 +255,7 @@ def build(config, which='changa'):
         purge = config['purge']
         del config['purge']
 
-    config = make_build_config(config, force=force)
+    config = make_build_config(config, force=force, package_set=ps)
     config.options.sort()
 
 
@@ -340,6 +354,56 @@ def list_items(opts, directory=None):
             sys.stdout.write("\n    Build log:\n")
             for msg in build.messages:
                 sys.stdout.write("      " + str(msg) + "\n")
+
+def show_architectures(opts, *args):
+    ps = chimi.command.find_current_package_set()
+
+    if not len(CharmDefinition.Architectures) > 0:
+        CharmDefinition.load_architectures(ps.packages['charm'].directory)
+
+    sym_pfx = ''
+    if 'unique' in opts:
+        sym_pfx = '_'
+    if len(args) == 0:
+        args = sorted(CharmDefinition.Architectures.keys());
+
+    list_only = False
+    if 'list' in opts:
+        list_only = True
+    show_all = False
+    if 'all' in opts:
+        show_all = opts['all']
+
+    for aname in args:
+        arch = CharmDefinition.Architectures[aname]
+        if arch.is_base and not show_all:
+            continue
+
+        inh_str = ''
+        if arch.parent:
+            inh_str = ' (%s)' % arch.parent.name
+        sys.stdout.write('\033[1;97m%s\033[0m%s' % (arch.name, inh_str))
+
+        opts = []
+        cc = []
+        fcc = []
+        if not list_only:
+            opts = getattr(arch, sym_pfx + 'options')
+            cc = getattr(arch, sym_pfx + 'compilers')
+            fcc = getattr(arch, sym_pfx + 'fortran_compilers')
+
+        if not list_only and sum(map(lambda x: 0 if not x else len(x), [opts, cc, fcc])) > 0:
+            sys.stdout.write(":\n")
+            if opts and len(opts) > 0:
+                sys.stdout.write('  options: %s\n'% ' '.join(opts))
+
+            if cc and len(cc) > 0:
+                sys.stdout.write('  compilers: %s\n'% ' '.join(cc))
+
+            if fcc and len(fcc) > 0:
+                sys.stdout.write('  fortran compilers: %s\n'% ' '.join(fcc))
+        else:
+            sys.stdout.write("\n")
 
 import chimi.job
 from chimi import Command
@@ -442,7 +506,21 @@ http://saga-project.github.io/saga-python/doc/adaptors/saga.adaptor.index.html
             ]),
     Command('status', [], 'List recorded build/package information.',
             [Option('r', 'reltime', 'Use relative time stamps').store() ],
-            None, list_items)
+            None, list_items),
+    Command('show', ['COMMAND'], 'Show useful information about various items.',
+            [], None,
+            subcommands=[
+            Command('arch', ['[ARCH]'],
+                    'List available options and compilers for a Charm++\n'
+                    'architecture.  If no architecture is given, do this for\n'
+                    'all available Charm++ architectures.',
+                    [Option('a', 'all', 'Show all architectures (default: '
+                            'build-only/non-base architectures)').store(),
+                     Option('l', 'list', 'List only the names of available architectures').store(),
+                     Option('u', 'unique', 'Show only non-inherited options and compilers').store()],
+                    'NOTE: this command requires an initialized Chimi directory.',
+                    callback=show_architectures),
+            ]),
     ]
 
 COMMAND_NAMES = [ cmd.name for cmd in COMMAND_LIST ]
