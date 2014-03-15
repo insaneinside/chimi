@@ -514,7 +514,7 @@ class ChaNGaDefinition(PackageDefinition):
             except subprocess.CalledProcessError:
                 _build.update(BuildStatus.CompileFailed)
             else:
-                _build.update(BuildStatus.Complete)
+                _build.update(BuildStatus.Complete, 'ChaNGa build complete.')
 
         return _build
 
@@ -814,7 +814,7 @@ class CharmDefinition(PackageDefinition):
             _build.update(BuildStatus.CompileFailed)
             return _build
         else:
-            _build.update(BuildStatus.Complete)
+            _build.update(BuildStatus.Complete, 'Charm++ build complete.')
             return _build
 
 class UtilityDefinition(PackageDefinition):
