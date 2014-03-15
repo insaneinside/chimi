@@ -7,16 +7,21 @@ build of Charm++.  It provides
 
   * host-specific build and job-management configuration support via a built-in
     database,
-  * `git` integration for fetching the programs' sources, and
+  * `git` integration for fetching the programs' sources and selecting branches
+    for each build,
   * a simplified interface for building matching versions of Charm++ and ChaNGa
-    and for tracking the status of those builds.
-
-Currently in the planning stage is a single, consistent interface for enqueuing and
-running jobs across a variety of hosts and batch-job systems; this feature will
-be based on [SAGA-Python](http://saga-project.github.io/saga-python/).
+    and for tracking the status of those builds, and
+  * a single, consistent interface for enqueuing and running jobs across a
+    variety of hosts and batch-job systems based on
+    [SAGA-Python](http://saga-project.github.io/saga-python/).
 
 Configuration files use the [YAML](http://yaml.org/) format, and should be easy
 to write for new hosts.
+
+Chimi is under moderate development and is still growing somewhat organically;
+it's not yet ready for general use (and is poorly documented); feel free to try
+it out, but nothing is promised. ;)
+
 
 ## Installing
 ### Dependencies
@@ -28,11 +33,11 @@ YMMV there.)
 
 Python packages used are:
 
-  * `yaml` for configuration data, and
-  * `saga` (PyPI name "saga-python") for job management (coming soon, not yet
-    required).
+  * `yaml` for configuration data,
+  * `saga` (PyPI name "saga-python") for job management,
   * `pkg_resources` for extracting configuration data from the self-contained
-    executable file
+    executable file, and
+  * `GitPython` for git integration.
 
 If these packages are not available, they can be installed to your account
 directory via
