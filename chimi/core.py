@@ -534,8 +534,12 @@ class CharmArchitecture(object):
         self.is_base = is_base
 
     def merge_property_with_inherited(self, propnames):
-        # Get all values for a property as specified in both the current object
-        # and all ancestors.
+        """
+        Get all values for a property as specified in both the current object
+        and all ancestors.  If a sequence is passed for `propnames`, a list of
+        the results for each specified property name will be returned instead.
+
+        """
         if isinstance(propnames, str):
             propname = propnames
             out = []
@@ -560,6 +564,7 @@ class CharmArchitecture(object):
                         rprop = getattr(ref, propnames[i])
                         if isinstance(rprop, list):
                             out[i].extend(rprop)
+                ref = ref.parent
             return out
 
     @property
