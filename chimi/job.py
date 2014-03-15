@@ -272,7 +272,7 @@ def run(opts, *args, **kwargs):
     print('\033[1mWorking directory:\033[0m %s' % job_desc.working_directory)
     print('\033[1m          Command:\033[0m %s' % ' '.join(jdexec))
 
-    if 'noact' in opts:
+    if 'noact' in opts or chimi.settings.noact:
         return
 
     # Create the job.
