@@ -29,6 +29,175 @@ from chimi import *
 
 basename = os.path.basename(sys.argv[0])
 
+
+class CommandError(Exception):
+    pass
+
+class CommandUsageError(CommandError,ValueError):
+    def __init__(self, cmd):
+        self.command = cmd
+        super(ValueError, self).__init__('Missing required arguments to "%s".\nUsage: %s' % (cmd.name, cmd.usage))
+
+class SubcommandError(CommandError, NotImplementedError):
+    def __init__(self, cmd, subcmd):
+        self.command = cmd
+        self.subcommand = subcmd
+        super(NotImplementedError, self).__init__('Command `%s\' has no such subcommand, `%s\'' % (cmd.name, subcmd))
+
+class Command(object):
+    """Describes a program command"""
+
+    def __init__(self, name, args, brief, options, detail,
+                 callback=None,
+                 subcommands=None):
+        self._name = name
+        self.arguments_usage = args
+        self.options = options
+        self.help_brief = brief
+        self.help_detail = detail
+        self.callback = callback
+        self.hidden = name[0] == '*'
+        self.required_arg_count = 0
+        self.subcommands=subcommands
+
+        self.parent = None
+        if subcommands != None:
+            for cmd in self.subcommands:
+                cmd.parent = self
+        else:
+            self.subcommands = []
+
+        for arg in self.arguments_usage:
+            if arg[0] != '[':
+                self.required_arg_count += 1
+    @property
+    def name(self):
+        """Name of this command"""
+        return self._name
+
+    @property
+    def brief(self):
+        """Brief help string for this command"""
+        return self.help_brief
+
+    @property
+    def detail(self):
+        """Detailed help string for this command"""
+        return self.help_detail
+
+    @property
+    def full_name_list(self):
+        """Get the "full name" of the command, including parent command names."""
+        parts = []
+        part = self
+        while part != None:
+            parts.insert(0, part.name)
+            part = part.parent
+        return parts
+
+    @property
+    def usage(self):
+        """Usage string for this command"""
+
+        parts = self.full_name_list
+        parts.insert(0, chimi.command.basename)
+
+        if len(self.options) > 0:
+            parts.append('[OPTION]...')
+        parts.extend(self.arguments_usage)
+
+        return ' '.join(parts)
+
+    @property
+    def short_usage(self):
+        """Short usage string containing only command name and arguments"""
+        return self.name + ((' ' + ' '.join(self.arguments_usage))
+                            if isinstance(self.arguments_usage, list)
+                            else '')
+
+    @property
+    def help(self):
+        """Detailed `help` output string for this command"""
+        return \
+            "\n".join([chimi.option.OptionParser.format_help(self.options,
+                                                             self.usage,
+                                                             self.help_brief),
+                       self.help_detail + "\n" if self.help_detail else ''])
+
+    @property
+    def num_args(self):
+        """Maximum number of arguments accepted"""
+        return len(self.arguments_usage)
+
+    def call(self, opts={}, args=[], kwargs={}):
+        """
+        Invoke the command.  If the command has sub-commands, it will be
+        invoked and the result used to pass additional options and keyword
+        arguments to the subcommand.
+
+        opts: pre-parsed options dict to pass directly to the command's
+            handler.
+
+        args: positional arguments.
+
+        kwargs: keyword arguments; these are usually /not/ specified directly.
+
+        """
+        opts_out = dict(opts)
+        subcommand_dict = {}
+        for cmd in self.subcommands:
+            subcommand_dict[cmd.name] = cmd
+
+        options = []
+        if len(self.options) > 0:
+            options.extend(chimi.OptionParser.flatten(self.options))
+
+
+        # Make "-h" work for printing the help string for any command
+        def impromptu_help(self):
+            sys.stdout.write(self.help)
+            exit(0)
+        options.append(chimi.Option('h', 'help', 'Show help for the %s command' % self.name)\
+                        .handle(lambda: impromptu_help(self)))
+
+        # Parse options for this command.
+        stop_set = subcommand_dict.keys()
+        try:
+            opts_out.update(chimi.OptionParser.handle_options(options, args, stop_set))
+        except Exception as err:
+            sys.stderr.write('%s: %s' % (self.name, err.message))
+            return 3;
+
+        if len(self.subcommands) == 0:
+            # Primary-command invocation.
+            if len(args) < self.required_arg_count:
+                raise CommandUsageError(self)
+            return self.callback(opts_out, *args, **kwargs)
+        else:
+            # Secondary-command invocation.
+            if not len(args) > 0:
+                raise CommandUsageError(self)
+            elif args[0] in subcommand_dict:
+                cmd = subcommand_dict[args[0]]
+                del args[0]
+
+                if len(args) < cmd.required_arg_count:
+                    raise CommandUsageError(cmd)
+                elif self.callback != None:
+                    # Invoke the parent command's handler to do e.g. common
+                    # initialization for subcommands, and then invoke the
+                    # subcommand using the results of that call.
+                    opts_out, _kwargs = self.callback(opts_out, *args)
+                    cmd.call(opts=opts_out, args=args, kwargs=_kwargs)
+                else:
+                    # No handler for parent command, so invoke the subcommand
+                    # "normally" (we still provide the additional options from
+                    # the parent command).
+                    cmd.call(opts=opts_out, args=args)
+            else:
+                raise SubcommandError(self, args[0])
+
+
 def load_platform_resources():
     if chimi.lmod.available:
         chimi.lmod.load('cuda')
@@ -410,7 +579,6 @@ def show_architectures(opts, *args):
             sys.stdout.write("\n")
 
 import chimi.job
-from chimi import Command
 COMMAND_LIST = [
     Command('init', ['DIR'], 'Bootstrap Chimi configuration from existing files.',
             [], None, bootstrap),
