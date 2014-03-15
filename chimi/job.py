@@ -255,6 +255,10 @@ def run(opts, *args, **kwargs):
                 jobopts[name] = val
         for name in jobopts:
             val = jobopts[name]
+
+            # Allow use of hyphen instead of underscore in attribute names.
+            if '-' in name:
+                name = name.replace('-', '_')
             if name == 'wall_time_limit' or name == 'total_cpu_count':
                 val = int(val)
             setattr(job_desc, name, val)

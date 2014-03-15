@@ -660,9 +660,10 @@ for accessing HPC resources.  Each job-management service supports a different
 set of job-description attributes; see the adaptor documentation (link below)
 for details.
 
-Note that job-description attribute names must be given in "snake_case" (all
-lower-case, words separated by underscores), even though the SAGA-Python
-documentation uses CamelCase.
+Note that even though the SAGA-Python documentation uses CamelCase in listing
+job-description attributes, both the API itself and this tool require that they
+be given in "snake_case" (all lower-case, words separated by underscores) or
+"spinal-case" (like snake case, but with hyphens instead of underscores).
 
 The API documentation for SAGA-Python's adaptors can be found at:
 
