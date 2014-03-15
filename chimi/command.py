@@ -737,7 +737,7 @@ def main():
     else:
         try:
             COMMANDS[args[0]].call(args=args[1:])
-        except chimi.core.CommandError as err:
+        except CommandError as err:
             sys.stderr.write(err.message+"\n")
             sys.stderr.write('Try `%s help %s\' for more information.\n'%\
                                  (chimi.command.basename, ' '.join(err.command.full_name_list)))
