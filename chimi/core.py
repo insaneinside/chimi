@@ -67,7 +67,7 @@ def get_cuda_dir():
                 return name
         return None
 
-def build_configure_flags(config):
+def build_configure_flags(definition, config):
     """Construct `configure` flags from the given build config."""
     bool_mapping = { 'yes': True, 'on': True,
                      'no': False, 'off': False }
@@ -85,7 +85,7 @@ def build_configure_flags(config):
         else:
             out.append('--with-%s=%s' % (name, value))
 
-    if len(config.extras) > 0:
+    if definition.name == 'ChaNGa' and len(config.extras) > 0:
         ldflags=[]
         cppflags=[]
         for x in config.extras:
@@ -483,7 +483,7 @@ class ChaNGaDefinition(PackageDefinition):
                 charmc = os.path.join(charm_build.directory, 'bin/charmc')
                 configure_invocation.append('CHARMC=%s' % charmc)
 
-            configure_invocation.extend(build_configure_flags(config))
+            configure_invocation.extend(build_configure_flags(self, config))
 
             _build.update(BuildStatus.Configure, ' '.join(configure_invocation))
             try:
@@ -795,9 +795,8 @@ class CharmDefinition(PackageDefinition):
             build_cwd = srcdir
             build_args = ['./build', 'ChaNGa', config.architecture]
             build_args.extend(config.options)
-            build_args.extend(build_configure_flags(config))
-
-        build_args.extend(config.extras)
+            build_args.extend(build_configure_flags(self, config))
+            build_args.extend(config.extras)
 
         _build.update(BuildStatus.Compile, ' '.join(build_args))
 
