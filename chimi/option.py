@@ -157,6 +157,7 @@ class Option:
                 out += self.argument_description
                 out += ']'
 
+        import chimi.util
         return ('%%-%ds%%s' % wrap_start_col) % (out, chimi.util.wrap_text(self.description,
                                                                            wrap_start_col,
                                                                            Option.LINE_WRAP_COLUMN))

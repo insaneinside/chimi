@@ -47,7 +47,7 @@ def create_struct(module, name, **defaults):
     return _type
 
 
-def wrap_text(self, _in, start_col=0, max_col=75):
+def wrap_text(_in, start_col=0, max_col=75):
     """
     Wrap text within the given column boundaries, filling the area before
     `start_col` with spaces.
