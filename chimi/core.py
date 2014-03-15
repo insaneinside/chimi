@@ -371,6 +371,14 @@ class PackageDefinition(object):
         pass
 
     @classmethod
+    def find_existing_builds(self, package):
+        """
+        Find and return a list of existing builds for a package instance.
+
+        """
+        return []
+
+    @classmethod
     def get_build_directory(self, build):
         """Get the directory in which a build's files should go"""
         pass
