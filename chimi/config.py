@@ -177,6 +177,8 @@ class HostJobConfig(object):
     def determine_job_manager(self):
         if all([chimi.util.which(name) for name in ['qacct', 'qconf', 'qdel', 'qstat', 'qsub']]):
             return 'sge'
+        elif all([chimi.util.which(name) for name in ['srun', 'squeue', 'sbatch']]):
+            return 'slurm'
         # FIXME: add detection for other job-management systems
         else:
             # 'fork' is SAGA's shell-based adaptor; it uses no job-management
