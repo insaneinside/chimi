@@ -312,7 +312,7 @@ class Build(object):
         if not 'branch' in self.config.__dict__:
             self.config.branch = self.package.branch
 
-        if _uuid == None and name == None and status == None and messages == None:
+        if _uuid == None and name == None and messages == None:
             if self.package.definition == ChaNGaDefinition:
                 self.name = pkg.definition.get_build_name(charm_name=CharmDefinition.get_build_name(self),
                                                           package=self.package)
