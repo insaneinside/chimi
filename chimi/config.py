@@ -167,6 +167,11 @@ class HostJobConfig(object):
     host: hostname that should be used for remote job execution via SSH.
 
     """
+    LaunchConfig = chimi.util.create_struct(__name__, 'LaunchConfig',
+                                            mpiexec=False,
+                                            remote_shell=None,
+                                            runscript=None)
+
 
     @classmethod
     def determine_job_manager(self):
@@ -187,9 +192,15 @@ class HostJobConfig(object):
 
             if 'host' in d:
                 self.host = d['host']
+
+            if 'launch' in d:
+                self.launch = HostJobConfig.LaunchConfig(**d['launch'])
+            else:
+                self.launch = HostJobConfig.LaunchConfig()
         else:
             self.manager = self.determine_job_manager()
             self.host = 'localhost'
+            self.launch = HostJobConfig.LaunchConfig()
 
 
 class HostConfig(object):

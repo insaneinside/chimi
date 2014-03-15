@@ -33,6 +33,20 @@ ANSI_STYLES={'bold': 1, 'underline': 4, 'blink': 25}
 relative_message_timestamps = False
 relative_timestamp_default_siguns = 2
 
+def create_struct(module, name, **defaults):
+    """Create a structure type with default values for each field."""
+    def __init__(self, **kwargs):
+        setattr(self, '__dict__', self)
+        for elt in defaults:
+            setattr(self, elt, defaults[elt])
+        for elt in kwargs:
+            setattr(self, elt, kwargs[elt])
+
+    _type = type(name, (dict,), {'__init__': __init__,
+                                 '__module__': module})
+    return _type
+
+
 def wrap_text(self, _in, start_col=0, max_col=75):
     """
     Wrap text within the given column boundaries, filling the area before
