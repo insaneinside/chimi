@@ -141,6 +141,8 @@ def common(opts, *args):
         access_type = 'ssh'
 
     job_manager = host_config.jobs.manager # job-manager _name_
+    if 'manager' in opts:
+        job_manager = opts['manager']
 
     # Load the SAGA security context.
     sys.stderr.write("Setting up SAGA security context... ")

@@ -458,6 +458,7 @@ COMMAND_LIST = [
     Command('job', ['CMD', '[ARG]...'], 'Manage job(s) on local or remote nodes.',
             [Option('H', 'host', 'Manipulate jobs on remote HOST via SSH [default: local]',
                     '[USER@]HOST').store(),
+             Option('m', 'manager', 'Specify/override job manager to use.', 'MANAGER').store(),
              ], None,
             callback=chimi.job.common,
             subcommands=[
