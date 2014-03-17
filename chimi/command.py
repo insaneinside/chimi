@@ -395,8 +395,12 @@ def make_build_config(config, force=False,
     return(config)
 
 
-def build(config, which='changa'):
+def build(config, which='changa', *args):
     which_args = ['all', 'changa', 'charm']
+
+    args = list(args)
+    if '--' in args:
+        del args[args.index('--')]
 
     if type(which) != str:
         which = which[0]
@@ -430,6 +434,7 @@ def build(config, which='changa'):
 
     config = make_build_config(config, force=force, package_set=ps)
     config.options.sort()
+    config.extras.extend(args)
 
 
     if which == 'all':
