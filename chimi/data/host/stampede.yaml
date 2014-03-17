@@ -19,7 +19,7 @@ build:
       default: yes
       extras: ['-L/opt/ofed/lib64', '-I/opt/ofed/include']
     cuda:
-      settings: { cuda-level: '30' }
+      settings: { cuda-level: '35' }
       # cuda toolkit location is detected via environment variable, which is
       # set by `lmod`, which itself is loaded if the `LMOD_CMD` env var is set
       # (which it is on Lonestar4).
