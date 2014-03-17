@@ -30,10 +30,10 @@ import chimi.core
 DEFAULT_COMMS_TYPE='net'
 """Default Charm++ communications transport to use"""
 
-def get_architecture():
+def get_architecture(base_arch=DEFAULT_COMMS_TYPE):
     """Get the likely Charm++ platform/architecture for the current host"""
     osname, hostname, discard, discard, machname = os.uname()
-    return '-'.join([DEFAULT_COMMS_TYPE, osname.lower(), machname.lower()])
+    return '-'.join([base_arch, osname.lower(), machname.lower()])
 
 
 class HostBuildOption(object):
