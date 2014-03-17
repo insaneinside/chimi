@@ -308,10 +308,47 @@ def helpfn(opts, *args, **kwargs):
         if isinstance(cmd.subcommands, list) and len(cmd.subcommands) > 0:
             helpfn(opts, io, command_list=cmd.subcommands)
 
+
+class InvalidArchitectureError(ValueError):
+    def __init__(self, archname, qualifier=None):
+        self.architecture = archname
+        self.qualifier = qualifier
+    @property
+    def message(self):
+        return '%s%s`%s\' is not a valid Charm++ build architecture.' % \
+            (self.qualifier if self.qualifier else '',
+             ' ' if self.qualifier else '',
+             self.architecture)
+
 def make_build_config(config, force=False,
                       package_set=None):
+    chose_architecture = False
     if not 'arch' in config:
         config['arch'] = chimi.config.get_architecture()
+        chose_architecture = True
+
+    completed_architecture = False
+    if package_set:
+        # Load architecture definitions if not already loaded.
+        if not len(CharmDefinition.Architectures) > 0:
+            CharmDefinition.load_architectures(package_set.packages['charm'].directory)
+
+        if config['arch'] in chimi.core.CharmDefinition.Architectures and\
+                chimi.core.CharmDefinition.Architectures[config['arch']].is_base:
+                # Shorthand (base arch) name given.  Fill it in for the user.
+                config['arch'] = chimi.config.get_architecture(config['arch'])
+                completed_architecture = True
+
+        if not config['arch'] in chimi.core.CharmDefinition.Architectures:
+            # No such name even exists, either as a base architecture *or* a
+            # build architecture.  Complain at the user.
+            qualifier = None
+            if chose_architecture:
+                qualifier = 'Auto-selected'
+            elif completed_architecture:
+                qualifier = 'Auto-completed'
+            raise InvalidArchitectureError(config['arch'], qualifier)
+
     if not 'settings' in config:
         config['settings'] = {}
 
@@ -378,10 +415,6 @@ def make_build_config(config, force=False,
 
     # Remove invalid options
     if package_set:
-        # Load architecture definitions if not already loaded.
-        if not len(CharmDefinition.Architectures) > 0:
-            CharmDefinition.load_architectures(package_set.packages['charm'].directory)
-
         arch = CharmDefinition.Architectures[config.architecture]
         invalid_options = list(set(config.options).difference(set(arch.all_options)))
 
@@ -739,12 +772,16 @@ def main():
         COMMANDS['help'].call(args=args[0:-1])
     else:
         try:
-            COMMANDS[args[0]].call(args=args[1:])
+            return COMMANDS[args[0]].call(args=args[1:])
         except CommandError as err:
             sys.stderr.write(err.message+"\n")
             sys.stderr.write('Try `%s help %s\' for more information.\n'%\
                                  (chimi.command.basename, ' '.join(err.command.full_name_list)))
-            exit(1)
+        except InvalidArchitectureError as err:
+            sys.stderr.write(err.message+"\n")
+            sys.stderr.write('Run `%s show arch -l\' for a list of valid architecture names.\n'%\
+                                 chimi.command.basename)
+        exit(1)
 
 if __name__ == "__main__":
     main()
