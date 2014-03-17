@@ -621,7 +621,6 @@ COMMAND_LIST = [
                      '[all|BUILD[,BUILD]...]').store(),
               ),
              ('Misc. options',
-              Option('n', 'noact', 'Don\'t actually run the build; print configuration and exit.').store(),
               Option(None, 'force', 'Force build even if arguments to -I or -L don\'t exist.').store(),
               ),
              ],
@@ -637,8 +636,7 @@ COMMAND_LIST = [
             subcommands=[
             Command('run', ['ARG...'], 'Run ChaNGa in a manner appropriate to the current or selected host.',
                     [('Run-time options',
-                      [Option('n', 'noact', 'Don\'t actually run anything; just print the constructed command.').store(),
-                       Option('w', 'watch', 'Watch the job after starting it.').store(),
+                      [Option('w', 'watch', 'Watch the job after starting it.').store(),
                        Option('e', None,
                               'Run a command with the ChaNGa executable as an argument.'
                               '  When this option is specified, the first argument that'
