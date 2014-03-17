@@ -553,7 +553,6 @@ class CharmArchitecture(object):
             out = []
             ref = self
             while ref:
-                sys.stderr.write(repr(ref)+"\n")
                 if hasattr(ref, propname):
                     rprop = getattr(ref, propname)
                     if isinstance(rprop, list):
@@ -566,7 +565,6 @@ class CharmArchitecture(object):
 
             ref = self
             while ref:
-                sys.stderr.write(repr(ref)+"\n")
                 for i in _range:
                     if hasattr(ref, propnames[i]):
                         rprop = getattr(ref, propnames[i])
