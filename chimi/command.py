@@ -428,18 +428,12 @@ def make_build_config(config, force=False,
     return(config)
 
 
-def build(config, which='changa', *args):
+def build(config, which=None, *args):
     which_args = ['all', 'changa', 'charm']
 
     args = list(args)
     if '--' in args:
         del args[args.index('--')]
-
-    if type(which) != str:
-        which = which[0]
-
-    if not which in which_args:
-        raise ValueError('Invalid `build` target')
 
     ps = find_current_package_set()
     changa = ps.packages['changa']
@@ -469,16 +463,21 @@ def build(config, which='changa', *args):
     config.options.sort()
     config.extras.extend(args)
 
+    if isinstance(which, type(None)):
+        if purge:
+            which = 'all'
+        else:
+            which = 'changa'
+
+    if not which in which_args:
+        raise ValueError('Invalid `build` target')
 
     if which == 'all':
         which = ['charm', 'changa']
     elif which == 'changa' or which == 'charm':
-        pass
+        which = [which]
     else:
         raise ValueError('Unknown `build` argument: %s' % which)
-
-    if type(which) != list:
-        which = [which]
 
     for item in which:
         package = ps.packages[item]
