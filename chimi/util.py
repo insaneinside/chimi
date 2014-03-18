@@ -14,7 +14,10 @@
 # The GNU General Public License version 2 may be found at
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
 
-"""Various misc. utility functions"""
+"""Various misc. utility functions and classes"""
+
+import os
+import re
 import datetime
 
 ANSI_COLORS={
@@ -241,3 +244,117 @@ def relative_datetime_string(time, significant_units=FORMAT_DURATION_DEFAULT_SIG
 
     return format_duration(diff, significant_units)
 
+
+def list_excluding_index(lst, idx):
+    """Get a copy of `lst` without the value at `idx`."""
+    if idx == 0:
+        return lst[1:]
+    elif idx == len(lst) - 1:
+        return lst[0:-1]
+    else:
+        out = lst[0:idx]
+        out.extend(lst[idx+1:])
+        return out
+
+def isnumeric(x):
+    """Check if the given value supports basic numeric operations"""
+    try:
+        x + 1
+        return True
+    except:
+        return False
+
+class Table(object):
+    """
+    Utility for pretty-printing a text-based table.  Unlike the "texttable"
+    package, Table doesn't include superfluous and distracting borders, and
+    includes support for text wrapping.
+
+    """
+    def __init__(self, cols=None, types=None, max_width=None, col_sep=2):
+        if types:
+            assert(len(types) == len(cols))
+
+        self.columns = cols
+        self.types = types
+        self.rows = []
+        self.max_width = max_width \
+            if max_width \
+            else (int(os.environ['COLUMNS']) - 8 \
+                      if 'COLUMNS' in os.environ \
+                      else 72)
+        self.col_sep = col_sep
+        self.range = range(len(self.columns))
+        self.column_data_widths = [len(self.columns[i]) for i in self.range]
+        self.column_value_widths = [[] for i in self.range]
+
+    def append(self, data):
+        if len(data) != len(self.columns):
+            raise ValueError('Invalid row length; expected %d, got %d'%
+                             (len(self.columns),len(data)))
+        else:
+            if self.types:
+                for i in range(len(self.types)):
+                    if not isinstance(data[i], self.types[i]):
+                        raise ValueError('Entry %d has invalid type: expected `%s\', got `%s\''%
+                                         (i, self.types[i], type(data[i])))
+            for i in self.range:
+                _len = len(str(data[i]))
+                self.column_data_widths[i] = max(self.column_data_widths[i], _len)
+                self.column_value_widths[i].append(_len)
+            self.rows.append(data)
+
+
+    def render(self, color=False):
+        column_widths = self.column_data_widths
+        slop = self.max_width - (sum(column_widths) + self.col_sep * (len(self.columns) - 1))
+
+        align_flags = ['-' for i in self.range]
+        if self.types:
+            align_flags = []
+            for i in self.range:
+                if not isnumeric(self.rows[0][i]):
+                    align_flags.append('-')
+                else:
+                    align_flags.append('')
+
+        if slop < 0:
+            mw = max(column_widths)
+            mwi = column_widths.index(mw)
+            other_widths = list_excluding_index(column_widths, mwi)
+            mow = max(other_widths)
+            if mow > column_widths[mwi] + slop:
+                # Split the difference
+                moi = column_widths.index(mow)
+                column_widths[moi] += slop/2
+                column_widths[mwi] += slop/2                
+            else:
+                column_widths[mwi] += slop
+
+        
+        row_format = (' '*self.col_sep)\
+            .join([('%%s%%%s%ds%%s' % (align_flags[i], column_widths[i])) \
+                       for i in self.range]) + "\n"
+        o = ''
+        rows = list(self.rows)
+        if color:
+            fmt = "\033[1m%s\033[m"
+            rows.insert(0, [fmt%col for col in self.columns])
+
+        else:
+            rows.insert(0, self.columns)
+
+        color_re = re.compile(r'^(\033\[[^a-zA-Z]*[a-zA-Z])([^\033]+)(\033\[[^a-zA-Z]*[a-zA-Z])$')
+        for row in rows:
+            rv = []
+            for entry in row:
+                pre_str = ''
+                value = str(entry)
+                post_str = ''
+                match = color_re.match(value)
+                if match:
+                    pre_str, value, post_str = match.groups()
+                rv.extend([pre_str, value, post_str])
+            o += row_format % tuple(rv)
+
+        return o
