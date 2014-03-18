@@ -15,6 +15,7 @@
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
 
 """Various misc. utility functions"""
+import datetime
 
 ANSI_COLORS={
     'default': 0,
@@ -31,7 +32,7 @@ ANSI_COLORS={
 ANSI_STYLES={'bold': 1, 'underline': 4, 'blink': 25}
 
 relative_message_timestamps = False
-relative_timestamp_default_siguns = 2
+FORMAT_DURATION_DEFAULT_SIGNIFICANT_UNITS = 2
 
 def create_struct(module, name, **defaults):
     """Create a structure type with default values for each field."""
@@ -116,12 +117,11 @@ def relative_datetime_string_ish(time=False):
     'just now', etc
 
     """
-    from datetime import datetime
-    now = datetime.now()
+    now = datetime.datetime.now()
     diff = None
     if type(time) is int:
         diff = now - datetime.fromtimestamp(time)
-    elif isinstance(time,datetime):
+    elif isinstance(time,datetime.datetime):
         diff = now - time 
     elif not time:
         diff = now - now
@@ -156,49 +156,48 @@ def relative_datetime_string_ish(time=False):
     return str(day_diff/365) + " years ago"
 
 # This one was inspired by the above function, but it's a lot more specific.
-def relative_datetime_string(time, significant_units=relative_timestamp_default_siguns):
+def format_duration(duration, significant_units=FORMAT_DURATION_DEFAULT_SIGNIFICANT_UNITS):
     """
-    Get a shorthand representation of the time elapsed since `time` (ex. "1h52m
-    3s").
+    Get a shorthand representation of `duration` (ex. "1h 52m 3s").
 
     `significant_units` specifies how specific the output should be; use
     -1 to include all non-zero elements.
 
 
     """
-    from datetime import datetime
-    now = datetime.now()
-    diff = None
-    if type(time) is int:
-        diff = now - datetime.fromtimestamp(time)
-    elif isinstance(time,datetime):
-        diff = now - time 
-    elif not time:
-        diff = now - now
+    seconds = None
+    days = None
 
-    second_diff = diff.seconds
-    day_diff = diff.days
+    dtype = type(duration)
+    if dtype is int:
+        days = duration / 86400
+        seconds = duration - days * 86400
+    elif dtype is datetime.timedelta:
+        days = duration.days
+        seconds = duration.seconds
+    else:
+        raise ValueError('Invalid type `%s\' for `duration`'%dtype)
 
-    s = second_diff % 60
-    second_diff -= s
+    s = seconds % 60
+    seconds -= s
 
-    m = (second_diff/60) % 60
-    second_diff -= m * 60
+    m = (seconds/60) % 60
+    seconds -= m * 60
 
-    h = (second_diff/3600) % 24
-    second_diff -= h * 3600
+    h = (seconds/3600) % 24
+    seconds -= h * 3600
 
-    d = day_diff % 7
-    day_diff -= d
+    d = days % 7
+    days -= d
 
-    w = (day_diff/7) % 4.286
-    day_diff -= w * 7
+    w = (days/7) % 4.286
+    days -= w * 7
 
-    mo = (day_diff/30.416666666) % 12
-    day_diff -= mo * 30
+    mo = (days/30.416666666) % 12
+    days -= mo * 30
 
-    y = day_diff/365.25
-    day_diff -= y * 365.25
+    y = days/365.25
+    days -= y * 365.25
 
     out = ''
     if significant_units != 0 and y > 0:
@@ -227,3 +226,18 @@ def relative_datetime_string(time, significant_units=relative_timestamp_default_
         out = '0s'
 
     return out.strip()
+
+
+def relative_datetime_string(time, significant_units=FORMAT_DURATION_DEFAULT_SIGNIFICANT_UNITS):
+    diff = None
+    from datetime import datetime
+    now = datetime.now()
+    if isinstance(time, int):
+        diff = now - datetime.fromtimestamp(time)
+    elif isinstance(time, datetime):
+        diff = now - time
+    elif not time:
+        diff = now - now
+
+    return format_duration(diff, significant_units)
+
