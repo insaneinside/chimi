@@ -512,6 +512,15 @@ def bootstrap(opts, directory):
         ps.save_flag = True
         ps.save()
 
+def make_colored_build_status_string(status):
+    """Create a color-coded build-status name string."""
+    status_color = 'yellow'
+    if status.failure:
+        status_color = 'brightred'
+    elif status.completion:
+        status_color = 'brightgreen'
+    return '\033[%dm%s\033[0m' % (chimi.util.ANSI_COLORS[status_color], status.name)
+
 def list_items(opts, directory=None):
     if 'reltime' in opts and opts['reltime'] == True:
         chimi.util.relative_message_timestamps = True
@@ -536,12 +545,8 @@ def list_items(opts, directory=None):
             sys.stdout.write("    directory: %s\n" % build.directory)
             sys.stdout.write("    source version: %s\n" % build.version)
             sys.stdout.write("    id: %s\n" % str(build.uuid))
-            status_color = 'yellow'
-            if build.status.failure:
-                status_color = 'brightred'
-            elif build.status.completion:
-                status_color = 'brightgreen'
-            sys.stdout.write("    status: \033[%dm%s\033[0m\n" % (chimi.util.ANSI_COLORS[status_color], build.status.name))
+
+            sys.stdout.write("    status: %s\n"%make_colored_build_status_string(build.status))
             sys.stdout.write("    architecture: %s\n" % build.config.architecture)
 
             options_desc = 'none'
@@ -614,6 +619,24 @@ def show_architectures(opts, *args):
                 sys.stdout.write('  fortran compilers: %s\n'% ' '.join(fcc))
         else:
             sys.stdout.write("\n")
+
+def show_builds(opts, *args):
+    t = chimi.util.Table(cols=('Name', 'UUID', 'Branch', 'Options', 'Status'),
+                         types=(basestring, uuid.UUID, basestring, basestring,
+                                basestring))
+    use_color = sys.stdout.isatty()
+    ps = chimi.command.find_current_package_set()
+    _builds = ps.packages['changa'].builds
+    _builds.sort(cmp=lambda x, y: x.name < y.name)
+    for _build in _builds:
+        status = make_colored_build_status_string(_build.status)\
+            if use_color \
+            else _build.status.name
+        t.append((_build.name, _build.uuid, _build.config.branch,
+                  ' '.join(_build.config.options), status))
+
+    print(t.render(color=use_color))
+    return 0
 
 import chimi.job
 COMMAND_LIST = [
@@ -729,6 +752,7 @@ http://saga-project.github.io/saga-python/doc/adaptors/saga.adaptor.index.html
                      Option('u', 'unique', 'Show only non-inherited options and compilers').store()],
                     'NOTE: this command requires an initialized Chimi directory.',
                     callback=show_architectures),
+            Command('builds', [], 'List ChaNGa builds.', [], None, callback=show_builds),
             ]),
     ]
 
