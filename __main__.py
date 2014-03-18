@@ -24,4 +24,4 @@ if os.path.exists(os.path.join(parentdir, 'Makefile')):
     sys.path.insert(0, parentdir)
 
 import chimi.command
-chimi.command.main()
+exit(chimi.command.main())

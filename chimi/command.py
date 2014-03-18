@@ -188,12 +188,12 @@ class Command(object):
                     # initialization for subcommands, and then invoke the
                     # subcommand using the results of that call.
                     opts_out, _kwargs = self.callback(opts_out, *args)
-                    cmd.call(opts=opts_out, args=args, kwargs=_kwargs)
+                    return cmd.call(opts=opts_out, args=args, kwargs=_kwargs)
                 else:
                     # No handler for parent command, so invoke the subcommand
                     # "normally" (we still provide the additional options from
                     # the parent command).
-                    cmd.call(opts=opts_out, args=args)
+                    return cmd.call(opts=opts_out, args=args)
             else:
                 raise SubcommandError(self, args[0])
 
@@ -764,11 +764,11 @@ def main():
 
     if len(args) == 0:
         OptionParser.show_usage(PROGRAM_USAGE, sys.stderr)
-        exit(1)
+        return 1
     elif not args[0] in COMMAND_NAMES:
         raise NotImplementedError('No such command "%s"' % args[0])
     elif len(args) > 1 and args[-1] == '-h':
-        COMMANDS['help'].call(args=args[0:-1])
+        return COMMANDS['help'].call(args=args[0:-1])
     else:
         try:
             return COMMANDS[args[0]].call(args=args[1:])
@@ -780,7 +780,7 @@ def main():
             sys.stderr.write(err.message+"\n")
             sys.stderr.write('Run `%s show arch -l\' for a list of valid architecture names.\n'%\
                                  chimi.command.basename)
-        exit(1)
+        return 1
 
 if __name__ == "__main__":
-    main()
+    exit(main())
