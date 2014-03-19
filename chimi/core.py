@@ -1029,11 +1029,11 @@ class PackageSet(object):
             # Allow saving immediately after loading even if the global `noact`
             # flag is set; `save_flag` set in such a case indicates that there
             # were e.g. inconsistencies to remove.
-            noact = chimi.setttings.noact
-            chimi.setttings.noact = False
+            noact = chimi.settings.noact
+            chimi.settings.noact = False
 
             out.save()
 
-            chimi.setttings.noact = noact
+            chimi.settings.noact = noact
 
         return out
