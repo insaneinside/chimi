@@ -1,0 +1,5 @@
+---
+# Options metadata.  Each top-level entry contains a tree that should be
+# applied over the host-configuration root tree (see e.g. host/stampede.yaml)
+# if the named option is used for a build.
+ibverbs: { jobs: { launch: { mpiexec: yes, remote-shell: ibrun-adaptor } } }

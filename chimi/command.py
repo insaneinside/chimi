@@ -691,7 +691,8 @@ COMMAND_LIST = [
             subcommands=[
             Command('run', ['ARG...'], 'Run ChaNGa in a manner appropriate to the current or selected host.',
                     [('Run-time options',
-                      [Option('w', 'watch', 'Watch the job after starting it.').store(),
+                      [Option(None, 'build', 'Use the build given by name or id.', 'NAME|UUID').store(),
+                       Option('w', 'watch', 'Watch the job after starting it.').store(),
                        Option('e', None,
                               'Run a command with the ChaNGa executable as an argument.'
                               '  When this option is specified, the first argument that'
@@ -703,13 +704,6 @@ COMMAND_LIST = [
                        Option('E', None, 'Set an environment variable for the job.',
                               'VAR=VALUE').store(multiple=True),
                        ]),
-                    ('Build-selection options',
-                     [Option('o', None, 'Select a build matching OPTION[s].', 'OPT[,OPT]...').store(multiple=True),
-                      Option('I', None, 'specify additional include directories for Charm builds',
-                             'DIR').store(multiple=True),
-                      Option('L', None, 'specify additional library directories for Charm builds',
-                             'DIR').store(multiple=True),
-                      ]),
                     ],
                     """
 Chimi's `run' command uses the SAGA interface for Python (see

@@ -17,7 +17,7 @@
 all: build/chimi
 
 PY_SOURCES:=__main__.py $(wildcard chimi/*.py)
-DATA_FILES:=$(sort chimi/data/host-index.yaml $(wildcard chimi/data/*.yaml chimi/data/host/*.yaml))
+DATA_FILES:=$(sort chimi/data/host-index.yaml $(wildcard chimi/data/*.yaml chimi/data/host/*.yaml chimi/data/ext/*.cc))
 
 build/chimi: $(PY_SOURCES) $(DATA_FILES)
 	(test -d build || mkdir build) && \
@@ -27,5 +27,4 @@ build/chimi: $(PY_SOURCES) $(DATA_FILES)
 
 chimi/data/host-index.yaml: make-host-index.py $(wildcard chimi/data/host/*.yaml)
 	python make-host-index.py > $@
-
 
