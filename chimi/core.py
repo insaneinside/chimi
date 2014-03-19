@@ -314,7 +314,8 @@ class Build(object):
 
         if _uuid == None and name == None and messages == None:
             if self.package.definition == ChaNGaDefinition:
-                self.name = pkg.definition.get_build_name(charm_name=CharmDefinition.get_build_name(self),
+                self.name = pkg.definition.get_build_name(build=self,
+                                                          charm_name=CharmDefinition.get_build_name(self),
                                                           package=self.package)
             else:
                 self.name = pkg.definition.get_build_name(self)
@@ -326,6 +327,7 @@ class Build(object):
             self.messages = messages
 
         self.directory = pkg.definition.get_build_directory(self)
+        assert(os.path.basename(self.directory) == self.name)
 
     @property
     def status(self):
@@ -411,17 +413,8 @@ class ChaNGaDefinition(PackageDefinition):
         if build and not charm_name:
             charm_name = CharmDefinition.get_build_name(build)
         base = re.sub(r'/.*$', '', charm_name)
-
-        branch = None
-        if build and not 'branch' in build.config.__dict__:
-            build.config.branch = package.repository.git.describe(all=True)
-            branch = build.config.branch
-        elif package:
-            branch = package.repository.git.describe(all=True)
-        else:
-            raise RuntimeError('couldn\'t get current branch')
-
-        return base + '+' + package.branch
+        branch = build.config.branch
+        return base + '+' + branch
 
     @classmethod
     def get_build_directory(self, build):
@@ -464,12 +457,6 @@ class ChaNGaDefinition(PackageDefinition):
                     charm.add_build(charm_build, replace=replace)
                 package.package_set.save_flag = True
 
-        # Ensure that the build directory exists, and cd into it.
-        build_name = self.get_build_name(charm_name=charm_build.name, package=package)
-        build_dir = os.path.join(builds_dir, build_name)
-        if not os.path.exists(build_dir) and not chimi.settings.noact:
-            os.mkdir(build_dir)
-
         _build = None
         if _continue:
             _build = package.find_build(config)
@@ -483,6 +470,11 @@ class ChaNGaDefinition(PackageDefinition):
 
         if package.branch != config.branch:
             check_call(['git', 'checkout', config.branch], cwd=package.directory)
+
+        # Ensure that the build directory exists, and cd into it.
+        if not os.path.isdir(_build.directory):
+            os.makedirs(_build.directory)
+        build_dir = _build.directory
 
         if (not _continue) or not _build.configured:
             # Build and run a `configure` invocation
