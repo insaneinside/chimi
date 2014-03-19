@@ -196,7 +196,14 @@ class HostJobConfig(object):
                 self.host = d['host']
 
             if 'launch' in d:
-                self.launch = HostJobConfig.LaunchConfig(**d['launch'])
+                launch = d['launch']
+                keys = launch.keys()
+                for k in keys:
+                    if '-' in k:
+                        k2 = k.replace('-', '_')
+                        launch[k2] = launch[k]
+                        del launch[k]
+                self.launch = HostJobConfig.LaunchConfig(**launch)
             else:
                 self.launch = HostJobConfig.LaunchConfig()
         else:
