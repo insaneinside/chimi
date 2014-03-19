@@ -19,63 +19,79 @@ import os
 import re
 import sys
 
-from datetime import datetime
 import threading
+import datetime
 import chimi.config
 import chimi.command
-import saga
-import saga.job
-import saga.adaptors
+
+saga = None
+
 
 __all__ = ['ADAPTORS', 'JOB_MANAGERS', 'build_changa_args', 'service_uri',
            'run', 'watch', 'cancel']
 
-# SAGA-Python loads adaptors on-demand, but we want to be able to query their
-# supported URI schemas here; manually load them.
-ADAPTORS_DIR = saga.adaptors.__path__[0]
-ADAPTOR_DIRS = filter(lambda e: os.path.isdir(os.path.join(ADAPTORS_DIR, e)),
-                      os.listdir(ADAPTORS_DIR))
-ADAPTORS=[]
+ADAPTORS=None
+ADAPTORS_DIR=None
+ADAPTOR_DIRS=None
 
-for name in ADAPTOR_DIRS:
-    for f in filter(lambda e: e[0] != '_' and re.match(r'^.*\.py$', e),
-                   os.listdir(os.path.join(ADAPTORS_DIR, name))):
-        subname = re.sub('\.py$', '', f)
-        modname = '.'.join([name, subname])
-        try:
-            __import__('saga.adaptors.%s'%modname)
-            mod = getattr(saga.adaptors, name)
-            mod = getattr(mod, subname)
-            if '_ADAPTOR_DOC' in dir(mod):
-                ADAPTORS.append(mod)
-            del mod
-        except:
-            pass
-        del subname
-        del modname
+def load_saga():
+    if not chimi.job.saga:
+        from datetime import datetime
+        b = datetime.now()
+        sys.stderr.write('Loading `saga\'... ')
 
-ACCESS_TYPE_NAMES=['local', 'ssh', 'gsissh']
-JOB_MANAGERS={}
-for ad in ADAPTORS:
-    if re.match('.*job$', ad.__name__):
-        schemas = ad._ADAPTOR_DOC['schemas'].keys()
-        schemas.sort()
+        import saga
+        import saga.job
+        import saga.adaptors
+        chimi.job.saga = saga
 
-        manager_name = re.sub(r'^.*\.([^.]+)\.[^.]+$', r'\1', ad.__name__)
+        # SAGA-Python loads adaptors on-demand, but we want to be able to query their
+        # supported URI schemas here; manually load them.
+        chimi.job.ADAPTORS_DIR = saga.adaptors.__path__[0]
+        chimi.job.ADAPTOR_DIRS = filter(lambda e: os.path.isdir(os.path.join(chimi.job.ADAPTORS_DIR, e)),
+                              os.listdir(chimi.job.ADAPTORS_DIR))
+        chimi.job.ADAPTORS=[]
 
-        dual_modes = filter(lambda x: '+' in x, schemas)
+        for name in chimi.job.ADAPTOR_DIRS:
+            for f in filter(lambda e: e[0] != '_' and re.match(r'^.*\.py$', e),
+                           os.listdir(os.path.join(chimi.job.ADAPTORS_DIR, name))):
+                subname = re.sub('\.py$', '', f)
+                modname = '.'.join([name, subname])
+                try:
+                    __import__('saga.adaptors.%s'%modname)
+                    mod = getattr(saga.adaptors, name)
+                    mod = getattr(mod, subname)
+                    if '_ADAPTOR_DOC' in dir(mod):
+                        chimi.job.ADAPTORS.append(mod)
+                    del mod
+                except:
+                    pass
+                del subname
+                del modname
 
-        if len(dual_modes) > 0:
-            JOB_MANAGERS[manager_name] = {'name': manager_name,
-                                          'access-types': map(lambda x: re.sub('^.+\+(.+)$', r'\1', x),
-                                                              dual_modes)}
-        else:
-            JOB_MANAGERS[manager_name] = {'name': manager_name,
-                                          'access-types': schemas}
-        del schemas
-        del manager_name
-        del dual_modes
-    del ad
+        chimi.job.ACCESS_TYPE_NAMES=['local', 'ssh', 'gsissh']
+        chimi.job.JOB_MANAGERS={}
+        for ad in chimi.job.ADAPTORS:
+            if re.match('.*job$', ad.__name__):
+                schemas = ad._ADAPTOR_DOC['schemas'].keys()
+                schemas.sort()
+
+                manager_name = re.sub(r'^.*\.([^.]+)\.[^.]+$', r'\1', ad.__name__)
+
+                dual_modes = filter(lambda x: '+' in x, schemas)
+
+                if len(dual_modes) > 0:
+                    chimi.job.JOB_MANAGERS[manager_name] = {'name': manager_name,
+                                                            'access-types': map(lambda x: re.sub('^.+\+(.+)$', r'\1', x),
+                                                                                dual_modes)}
+                else:
+                    chimi.job.JOB_MANAGERS[manager_name] = {'name': manager_name,
+                                                            'access-types': schemas}
+                del schemas
+                del manager_name
+                del dual_modes
+            del ad
+        sys.stderr.write(chimi.util.format_duration(datetime.now() - b) + "\n")
 
 def service_uri(job_manager, hostname='localhost', access_type=None):
     """
@@ -120,6 +136,7 @@ def build_changa_args(job_description):
                    
 
 def common(opts, *args):
+    load_saga()
     host_config = None
     context = None
 

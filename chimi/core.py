@@ -15,7 +15,6 @@
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
 import os
 import re
-import git
 import sys
 import yaml
 import uuid
@@ -29,6 +28,17 @@ from collections import Counter
 
 import chimi.util
 import chimi.settings
+
+git = None
+
+def load_git():
+    if not chimi.core.git:
+        from datetime import datetime
+        b = datetime.now()
+        sys.stderr.write('Loading `git\'... ')
+        import git
+        sys.stderr.write(chimi.util.format_duration(datetime.now() - b) + "\n")
+        chimi.core.git = git
 
 def check_call(call, cwd=None):
     oldcwd = os.getcwd();
@@ -858,6 +868,7 @@ class Package(object):
 
     @property
     def repository(self):
+        load_git()
         if self._repository != None:
             return self._repository
         else:
