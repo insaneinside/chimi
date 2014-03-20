@@ -512,7 +512,7 @@ def build(config, which=None, *args):
                 sys.stderr.write("Skipping build of \"%s\": already built: %s\n" % (item, _build.name))
             else:
                 try:
-                    ps[item].build(config, _continue, replace, force)
+                    ps[item].build(config, _continue=_continue, replace=replace, force=force)
                 except KeyboardInterrupt:
                     ps[item].find_build(config).update(BuildStatus.InterruptedByUser)
                     if not chimi.settings.noact:
