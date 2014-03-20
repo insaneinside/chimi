@@ -287,6 +287,8 @@ class Table(object):
         self.range = range(len(self.columns))
         self.column_data_widths = [len(self.columns[i]) for i in self.range]
         self.column_value_widths = [[] for i in self.range]
+        self.color_re = re.compile(r'^(\033\[[^a-zA-Z]*[a-zA-Z])([^\033]+)(\033\[[^a-zA-Z]*[a-zA-Z])$')
+
 
     def append(self, data):
         if len(data) != len(self.columns):
@@ -299,6 +301,10 @@ class Table(object):
                         raise ValueError('Entry %d has invalid type: expected `%s\', got `%s\''%
                                          (i, self.types[i], type(data[i])))
             for i in self.range:
+                value = str(data[i])
+                match = self.color_re.match(value)
+                if match:
+                    value = match.groups(1)
                 _len = len(str(data[i]))
                 self.column_data_widths[i] = max(self.column_data_widths[i], _len)
                 self.column_value_widths[i].append(_len)
@@ -344,14 +350,13 @@ class Table(object):
         else:
             rows.insert(0, self.columns)
 
-        color_re = re.compile(r'^(\033\[[^a-zA-Z]*[a-zA-Z])([^\033]+)(\033\[[^a-zA-Z]*[a-zA-Z])$')
         for row in rows:
             rv = []
             for entry in row:
                 pre_str = ''
                 value = str(entry)
                 post_str = ''
-                match = color_re.match(value)
+                match = self.color_re.match(value)
                 if match:
                     pre_str, value, post_str = match.groups()
                 rv.extend([pre_str, value, post_str])
