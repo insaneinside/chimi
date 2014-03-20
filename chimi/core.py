@@ -36,9 +36,14 @@ def load_git():
     if not chimi.core.git:
         from datetime import datetime
         b = datetime.now()
-        sys.stderr.write('Loading `git\'... ')
+        sys.stderr.write('(Loading `git\'... ')
         import git
-        sys.stderr.write(chimi.util.format_duration(datetime.now() - b) + "\n")
+        sys.stderr.write(chimi.util.format_duration(datetime.now() - b)+')')
+
+        if sys.stderr.isatty():
+            sys.stderr.write('\033[K\r')
+        else:
+            sys.stderr.write("\n")
         chimi.core.git = git
 
 def check_call(call, cwd=None):

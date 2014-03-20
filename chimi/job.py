@@ -41,7 +41,7 @@ def load_saga():
     if not chimi.job.saga:
         from datetime import datetime
         b = datetime.now()
-        sys.stderr.write('Loading `saga\'... ')
+        sys.stderr.write('(Loading `saga\'... ')
 
         import saga
         import saga.job
@@ -94,7 +94,12 @@ def load_saga():
                 del manager_name
                 del dual_modes
             del ad
-        sys.stderr.write(chimi.util.format_duration(datetime.now() - b) + "\n")
+        sys.stderr.write(chimi.util.format_duration(datetime.now() - b) + ')')
+        if sys.stderr.isatty():
+            sys.stderr.write('\033[K\r')
+        else:
+            sys.stderr.write("\n")
+
 def service_uri(job_manager, hostname=None, access_type=None,
                 host_config=None):
     """
