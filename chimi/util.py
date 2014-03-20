@@ -271,6 +271,8 @@ class Table(object):
     includes support for text wrapping.
 
     """
+    DEFAULT_MAX_WIDTH=132
+
     def __init__(self, cols=None, types=None, max_width=None, col_sep=2):
         if types:
             assert(len(types) == len(cols))
@@ -282,7 +284,7 @@ class Table(object):
             if max_width \
             else (int(os.environ['COLUMNS']) - 8 \
                       if 'COLUMNS' in os.environ \
-                      else 72)
+                      else Table.DEFAULT_MAX_WIDTH)
         self.col_sep = col_sep
         self.range = range(len(self.columns))
         self.column_data_widths = [len(self.columns[i]) for i in self.range]
