@@ -19,6 +19,7 @@ import sys
 import yaml
 import uuid
 import time
+import copy
 import shutil
 import datetime
 import textwrap
@@ -319,7 +320,7 @@ class Build(object):
         self.package = pkg
         self.config = config
 
-        if not 'branch' in self.config.__dict__:
+        if not 'branch' in self.config.__dict__ or not self.config.branch in self.package.branches:
             self.config.branch = self.package.branch
 
         if _uuid == None and name == None and messages == None:
@@ -829,6 +830,8 @@ class Package(object):
         self.definition = definition
         self.directory = directory
         self._repository = None
+        self._branches = None
+
         if builds == None:
             self.builds = []
             if os.path.exists(directory):
@@ -839,13 +842,22 @@ class Package(object):
     def __setstate__(self, state):
         self.__dict__ = state
         self._repository = None
+        self._branches = None
 
-        # Check for build directories that no longer exist, and builds with the
-        # same path.
+        # Check for build directories that no longer exist, builds with
+        # identical paths, and builds with incorrect branch names.
+        do_save = False
         builds_to_delete = set()
         for build in self.builds:
+            build.config = copy.copy(build.config)
             if not os.path.exists(build.directory):
+                do_save = True
                 builds_to_delete.add(build)
+            if not build.config.branch in self.branches:
+                do_save = True
+                build.config.branch = \
+                    re.sub(r'^(?:heads/|remotes/([^/]+)/)', '',
+                           self.repository.git.describe(build.version, all=True))
 
         counts = Counter([b.directory for b in self.builds])
         for _dir in counts:
@@ -856,11 +868,22 @@ class Package(object):
 
         if len(builds_to_delete) > 0:
             self.builds = list(set(self.builds).difference(builds_to_delete))
+
+        if do_save:
             # Set a flag on the parent package-set to indicate that internal
             # state has changed.  It will save when it's ready -- if we
             # directly called its `save` method here, when it's (possibly) not
             # yet done loading, data would be lost.
             self.package_set.save_flag = True
+
+    @property
+    def branches(self):
+        """Fetch the names of all local repository branches"""
+        # We fetch the branch list only once per instantiation of the class,
+        # because we don't expect it to change during a single Chimi run.
+        if not self._branches:
+            self._branches = [re.sub(r'^heads/', '', br.name) for br in self.repository.branches]
+        return self._branches
 
     @property
     def branch(self):
@@ -934,6 +957,9 @@ class Package(object):
     def find_build(self, config):
         """Find a build matching `config` for this package instance."""
         matches = self.find_builds(config)
+        if len(matches) > 1:
+            matches = filter(lambda x: x.config.branch == config.branch, matches)
+
         if len(matches) > 0:
             return matches[0]
         else:
@@ -1007,17 +1033,22 @@ class PackageSet(object):
                 if 'save_flag' in self.__dict__:
                     del self.__dict__['save_flag']
                 repos = {}
+                branches = {}
                 for pkg in self.packages:
                     if '_repository' in self.packages[pkg].__dict__:
                         repos[pkg] = self.packages[pkg]._repository
                         del self.packages[pkg]._repository
+                    if '_branches' in self.packages[pkg].__dict__:
+                        branches[pkg] = self.packages[pkg]._branches
+                        del self.packages[pkg]._branches
 
                 file(os.path.join(self.directory, PackageSet.SET_FILE),
                      'w').write(yaml.dump(self))
 
                 for pkg in repos:
                     self.packages[pkg]._repository = repos[pkg]
-
+                for pkg in branches:
+                    self.packages[pkg]._branches = branches[pkg]
                 self.save_flag = False
                 self.mutex = mtx
                 # sys.stderr.write("done.\n")
