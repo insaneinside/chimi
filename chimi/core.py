@@ -297,7 +297,12 @@ class BuildConfig(object):
         self.extras.sort()
 
     def __str__(self):
-        return str((self.architecture, self.branch, self.options, self.settings, self.extras))
+        brstr = ''
+        if self.branch:
+            brstr = ' branch=%s'
+        return '<%s:%s arch=%s options=%s settings=%s extras=%s>' % \
+            (self.__class__.__name__, brstr, self.architecture, self.options, self.settings,
+             self.extras)
 
     def __eq__(self, other):
         if not isinstance(other, BuildConfig):
