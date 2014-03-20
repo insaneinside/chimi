@@ -337,10 +337,18 @@ class Table(object):
             else:
                 column_widths[mwi] += slop
 
-        
-        row_format = (' '*self.col_sep)\
-            .join([('%%s%%%s%ds%%s' % (align_flags[i], column_widths[i])) \
-                       for i in self.range]) + "\n"
+        # Build the format string that we'll use to format each row of the
+        # output.  If the final column is left-aligned, we skip specifying
+        # field-width for it.
+        col_fmts = [('%%s%%%s%ds%%s' % (align_flags[i], column_widths[i])) \
+                        for i in self.range[0:-1]]
+        if align_flags[-1] == '-':
+            col_fmts.append('%%s%%%ss%%s'%(align_flags[-1]))
+        else:
+            col_fmts.append('%%s%%%s%ds%%s' % (align_flags[-1], column_widths[-1]))
+        row_format = (' '*self.col_sep).join(col_fmts) + "\n"
+
+
         o = ''
         rows = list(self.rows)
         if color:
