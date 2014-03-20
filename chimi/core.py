@@ -688,7 +688,19 @@ class CharmDefinition(PackageDefinition):
     def get_build_version(self, build):
         version_file = os.path.join(build.directory, 'tmp', 'VERSION')
         if os.path.exists(version_file):
-            return file(version_file, 'r').read().strip()
+            tagged = file(version_file, 'r').read().strip()
+            tags = [re.escape(tag.name) for tag in build.package.repository.tags]
+            _re = re.compile(r'^(%s)(?:-[0-9]+)?(?:-g([0-9a-fA-F]+))?'%'|'.join(tags))
+
+            commit = None
+            try_two = False
+            while not commit and not try_two:
+                m = _re.match(tagged)
+                tag, commit = m.groups()
+                if not commit:
+                    tagged = build.package.repository.git.describe(tag, long=True)
+                    try_two = True
+            return commit
 
 
     @classmethod
