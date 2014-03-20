@@ -507,8 +507,9 @@ def build(config, which=None, *args):
                 sys.stderr.write('  hmmm, no builds matched.\n')
         else:               # We're actually building something.
             _build = package.find_build(config)
-            if _build and _build.compiled and not force:
-                sys.stderr.write("Skipping build of \"%s\": already built\n" % item)
+
+            if _build and _build.config.branch == config.branch and _build.compiled and not force:
+                sys.stderr.write("Skipping build of \"%s\": already built: %s\n" % (item, _build.name))
             else:
                 try:
                     ps[item].build(config, _continue, replace, force)
