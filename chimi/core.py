@@ -532,6 +532,7 @@ class CharmArchitecture(object):
                  options=None, compilers=None, fortran_compilers=None,
                  is_base=False):
         self.parent = parent
+        self.children = []
         self.name = name
 
         self._options = None
@@ -749,9 +750,11 @@ class CharmDefinition(PackageDefinition):
 
                 parent = CharmDefinition.Architectures[base_name]
 
-            CharmDefinition.Architectures[name] = \
-                CharmArchitecture(parent, name,
-                                  *self.get_arch_options_and_compilers(directory, name))
+            arch = CharmArchitecture(parent, name,
+                                     *self.get_arch_options_and_compilers(directory, name))
+            CharmDefinition.Architectures[name] = arch
+            if parent:
+                parent.children.append(arch)
 
     @classmethod
     def find_existing_builds(self, package, build_dir=None):
