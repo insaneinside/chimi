@@ -645,16 +645,50 @@ def show_builds(opts, *args):
                                 basestring))
     use_color = sys.stdout.isatty()
     ps = chimi.command.find_current_package_set()
-    _builds = ps.packages['changa'].builds
-    _builds.sort(cmp=lambda x, y: x.name < y.name)
-    for _build in _builds:
-        status = make_colored_build_status_string(_build.status)\
-            if use_color \
-            else _build.status.name
-        t.append((_build.name, _build.uuid, _build.config.branch,
-                  ' '.join(_build.config.options), status))
 
-    print(t.render(color=use_color))
+    package = 'changa'
+    branch = None
+
+    if 'package' in opts:
+        package = opts['package']
+
+    _builds = ps.packages[package].builds
+
+    if 'branch' in opts:
+        _builds = filter(lambda x: x.config.branch == opts['branch'], _builds)
+
+    if 'arch' in opts:
+        archname = opts['arch']
+        if not len(CharmDefinition.Architectures) > 0:
+            CharmDefinition.load_architectures(ps.packages['charm'])
+        if not archname in CharmDefinition.Architectures:
+            raise InvalidArchitectureError(archname)
+        else:
+            def gather_names(arch):
+                out = [arch.name]
+                if len(arch.children) > 0:
+                    out.extend([name
+                                for ch in arch.children
+                                for name in gather_names(ch)
+                                ])
+                return out
+            arch_names = gather_names(CharmDefinition.Architectures[archname])
+            _builds = filter(lambda x: x.config.architecture in arch_names, _builds)
+
+    if len(_builds) > 0:
+        _builds.sort(cmp=lambda x, y: cmp(x.name,y.name))
+        for _build in _builds:
+            status = make_colored_build_status_string(_build.status)\
+                if use_color \
+                else _build.status.name
+            t.append((_build.name, _build.uuid, _build.config.branch,
+                      _build.version, ' '.join(_build.config.options), status))
+
+        sys.stderr.write(str(time.clock() - sys.modules['__main__'].chimi_process_start_clock) + 's\n')
+        print(t.render(color=use_color))
+    else:
+        sys.stderr.write(str(time.clock() - sys.modules['__main__'].chimi_process_start_clock) + 's\n')
+        sys.stderr.write('No matching builds.\n')
     return 0
 
 import chimi.job
@@ -765,7 +799,13 @@ http://saga-project.github.io/saga-python/doc/adaptors/saga.adaptor.index.html
                      Option('u', 'unique', 'Show only non-inherited options and compilers').store()],
                     'NOTE: this command requires an initialized Chimi directory.',
                     callback=show_architectures),
-            Command('builds', [], 'List ChaNGa builds.', [], None, callback=show_builds),
+            Command('builds', [], 'List package builds.',
+                    [Option('p', 'package', 'Show builds for PACKAGE. (default: changa)',
+                            'PACKAGE').store(),
+                     Option('b', 'branch', 'Filter by branch BRANCH.', 'BRANCH').store(),
+                     Option('a', 'arch', 'Filter by architecture ARCH and descendents.',
+                            'ARCH').store(),
+                     ], None, callback=show_builds),
             ]),
     ]
 
