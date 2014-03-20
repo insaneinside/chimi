@@ -939,7 +939,8 @@ class Package(object):
 
         return self.definition.build(self, config, **kwargs)
 
-    def purge_builds(self, config=None, names=None):
+    def purge_builds(self, config=None, names=None, uuids=None,
+                     callback=None):
         """
         Purge any builds matching the supplied configuration or names/UUIDs.
         If no configuration or names are given, purge all builds.
@@ -948,17 +949,22 @@ class Package(object):
         _builds = None
         if config:
             _builds = self.find_builds(config)
-        elif names:
-            _builds = filter(lambda _build: _build.name in names or str(_build.uuid) in names,
+        elif names or uuids:
+            _builds = filter(lambda _build: \
+                                 (names and _build.name in names) or \
+                                 (uuids and str(_build.uuid) in uuids),
                              self.builds)
         else:
             _builds = list(self.builds)
 
         for _build in _builds:
-            sys.stderr.write("%s build \"%s\"\n" % ('purging' if not chimi.settings.noact else 'would purge', _build.name))
+            if callback:
+                callback(_build)
             if not chimi.settings.noact:
                 shutil.rmtree(_build.directory)
                 self.builds.remove(_build)
+
+        return len(_builds)
 
     def find_builds(self, config):
         """Find all builds matching `config` for this package instance."""
