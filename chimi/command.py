@@ -486,7 +486,25 @@ def build(config, which=None, *args):
         elif isinstance(purge,bool) and purge:
             package.purge_builds(config=config)
         elif isinstance(purge,str):
-            package.purge_builds(names=[name.strip() for name in purge.split(',')])
+            purge_builds = purge.split(',')
+            hd = r'[a-fA-F0-9]'
+            uuid_re=re.compile(r'^%s{8}-%s{4}-%s{4}-%s{4}-%s{12}$'%(hd,hd,hd,hd,hd))
+            names = []
+            uuids = []
+            for s in purge_builds:
+                if uuid_re.match(s):
+                    uuids.append(s)
+                else:
+                    names.append(s)
+            sys.stderr.write('Purging from %s:\n'%package.definition.name)
+            n = package.purge_builds(names=names, uuids=uuids,
+                                     callback=lambda x: \
+                                         sys.stderr.write("  %s build \"%s\"\n"%('purging' \
+                                                                                     if not chimi.settings.noact \
+                                                                                     else 'would purge',
+                                                                                 x.name)))
+            if not n:
+                sys.stderr.write('  hmmm, no builds matched.\n')
         else:               # We're actually building something.
             _build = package.find_build(config)
             if _build and _build.compiled and not force:
