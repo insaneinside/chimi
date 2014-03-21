@@ -597,21 +597,30 @@ def show_architectures(opts, *args):
 
     sym_pfx = ''
     if 'unique' in opts:
-        sym_pfx = '_'
-    if len(args) == 0:
-        args = sorted(CharmDefinition.Architectures.keys());
+        unique = True
+
+    _type='build'
+    if 'type' in opts:
+        _type = opts['type']
+    assert(_type in ['build', 'base', 'both', 'all'])
 
     list_only = False
     if 'list' in opts:
         list_only = True
-    show_all = False
-    if 'all' in opts:
-        show_all = opts['all']
+
+    if len(args) == 0:
+        args = sorted(CharmDefinition.Architectures.keys());
+    else:
+        # Show _all_ architectures that the user explicitly asked to see.
+        _type = 'all'
 
     for aname in args:
         arch = CharmDefinition.Architectures[aname]
-        if arch.is_base and not show_all:
+        if (arch.is_base and _type == 'build') or \
+                (_type == 'base' and not arch.is_base) or \
+                (arch.name == 'common' and _type != 'all'):
             continue
+
 
         inh_str = ''
         if arch.parent:
@@ -622,9 +631,12 @@ def show_architectures(opts, *args):
         cc = []
         fcc = []
         if not list_only:
-            opts = getattr(arch, sym_pfx + 'options')
-            cc = getattr(arch, sym_pfx + 'compilers')
-            fcc = getattr(arch, sym_pfx + 'fortran_compilers')
+            if unique:
+                opts = arch._options
+                cc = arch._compilers
+                fcc = arch._fortran_compilers
+            else:
+                opts, cc, fcc = arch.merge_property_with_inherited(('_options', '_compilers', '_fortran_compilers'))
 
         if not list_only and sum(map(lambda x: 0 if not x else len(x), [opts, cc, fcc])) > 0:
             sys.stdout.write(":\n")
@@ -789,16 +801,36 @@ http://saga-project.github.io/saga-python/doc/adaptors/saga.adaptor.index.html
     Command('show', ['COMMAND'], 'Show useful information about various items.',
             [], None,
             subcommands=[
-            Command('arch', ['[ARCH]'],
-                    'List available options and compilers for a Charm++\n'
-                    'architecture.  If no architecture is given, do this for\n'
+            # Architectures list.
+            Command('arch', ['[ARCH]...'],
+                    'List available options and compilers for a Charm++ '
+                    'architecture.  If no architecture is given, do this for '
                     'all available Charm++ architectures.',
-                    [Option('a', 'all', 'Show all architectures (default: '
-                            'build-only/non-base architectures)').store(),
+                    [Option('t', 'type', 'Show TYPE architectures, where TYPE '
+                            'is "build", "base", "both", or "all". (default: build).',
+                            'TYPE').store(),
                      Option('l', 'list', 'List only the names of available architectures').store(),
                      Option('u', 'unique', 'Show only non-inherited options and compilers').store()],
-                    'NOTE: this command requires an initialized Chimi directory.',
-                    callback=show_architectures),
+                    """
+This command requires an initialized Chimi directory.
+
+Charm++ builds are generally identified first by their architecture name, then
+by optional features included at build time (some of which may be unique to
+that architecture).  This command parses the content of a Charm++ source tree
+to extract information about available architectures and the options &
+compilers available for each.
+
+The `--type' option accepts several values, which are explained here.
+  * "build" shows architectures that are available for use in a Charm++ build.
+  * "base" shows non-build architectures from which one or more build
+     architectures inherit code and/or options.
+  * "both" shows both build and base architectures.
+  * "all" is equivalent to "both", but also shows the `common' architecture,
+    which is inherited by all base architectures.
+
+`--type'/`-t' is ignored when architectures names are passed as arguments.
+"""
+                    , callback=show_architectures),
             Command('builds', [], 'List package builds.',
                     [Option('p', 'package', 'Show builds for PACKAGE. (default: changa)',
                             'PACKAGE').store(),
