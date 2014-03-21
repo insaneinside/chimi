@@ -744,9 +744,16 @@ COMMAND_LIST = [
               Option(None, 'force', 'Force build even if arguments to -I or -L don\'t exist.').store(),
               ),
              ],
-            'The target, if not given, defaults to "changa".  The ChaNGa '
-            'package definition will initiate a matching Charm++ build if a '
-            'suitable one is not found.', build),
+            """
+The target, if not given, defaults to "changa".  The ChaNGa package definition
+will initiate a matching Charm++ build if a suitable one is not found.
+
+For a list of valid architecture names, run `%s show arch -l'.  As a special
+case, the `--arch' option accepts base architectures as well
+(`%s show arch -lt base\'); when a base architecture name is given, an attempt
+is made to automatically determine the appropriate build architecture.
+
+""" % (basename, basename), build),
     Command('job', ['CMD', '[ARG]...'], 'Manage job(s) on local or remote nodes.',
             [Option('H', 'host', 'Manipulate jobs on remote HOST via SSH [default: local]',
                     '[USER@]HOST').store(),
