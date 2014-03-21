@@ -25,5 +25,5 @@ def load(x, version=None):
                                 stderr=sys.stderr)
         out = subp.communicate()[0]
         subp.wait()
-        exec out
+        exec(out)
 
