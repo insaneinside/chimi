@@ -596,6 +596,7 @@ def show_architectures(opts, *args):
         CharmDefinition.load_architectures(ps.packages['charm'].directory)
 
     sym_pfx = ''
+    unique = False
     if 'unique' in opts:
         unique = True
 
