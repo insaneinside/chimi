@@ -29,3 +29,11 @@ processes that change files will be run.  [This is a _contract_: all `chimi'
 code must obey it or face excision.]
 
 """
+
+
+relative_message_timestamps = False
+"""
+When converting build messages to strings, should we use a relative time for
+the timestamp?  Default False.
+
+"""

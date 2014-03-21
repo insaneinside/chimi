@@ -34,7 +34,6 @@ ANSI_COLORS={
     }
 ANSI_STYLES={'bold': 1, 'underline': 4, 'blink': 25}
 
-relative_message_timestamps = False
 FORMAT_DURATION_DEFAULT_SIGNIFICANT_UNITS = 2
 
 def create_struct(module, name, **defaults):

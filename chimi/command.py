@@ -542,7 +542,7 @@ def make_colored_build_status_string(status):
 
 def list_items(opts, directory=None):
     if 'reltime' in opts and opts['reltime'] == True:
-        chimi.util.relative_message_timestamps = True
+        chimi.settings.relative_message_timestamps = True
 
     ps = find_current_package_set()
 
