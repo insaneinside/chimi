@@ -14,16 +14,22 @@
 # The GNU General Public License version 2 may be found at
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
 
-@property
-def available():
-    return os.environ.has_key('LMOD_CMD')
+import os
+import sys
+import types
+import subprocess
 
-def load(x, version=None):
-    if version != None:
-        x = "%s/%s" % (x, version)
-        subp = subprocess.Popen([os.environ['LMOD_CMD'], 'python', 'load', x],
-                                stderr=sys.stderr)
-        out = subp.communicate()[0]
-        subp.wait()
-        exec(out)
+class LModModule(types.ModuleType):
+    @property
+    @classmethod
+    def available(self):
+        return 'LMOD_CMD' in os.environ
 
+    @classmethod
+    def load(self, x, version=None):
+        if version != None:
+            x = "%s/%s" % (x, version)
+            out = subprocess.check_output([os.environ['LMOD_CMD'], 'python', 'load', x])
+            exec out
+
+sys.modules['chimi.lmod'] = LModModule
