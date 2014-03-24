@@ -17,10 +17,16 @@
 all: build/chimi
 
 PY_SOURCES:=__main__.py $(wildcard chimi/*.py)
+PYC_SOURCES:=$(PY_SOURCES:%.py=%.pyc)
 DATA_FILES:=$(sort chimi/data/host-index.yaml $(wildcard chimi/data/*.yaml chimi/data/host/*.yaml chimi/data/ext/*.cc))
-GENERATED_FILES:=chimi/data/host-index.yaml
+GENERATED_FILES=chimi/data/host-index.yaml $(PYC_SOURCES) bytecompile.stamp
 
-build/chimi: $(PY_SOURCES) $(DATA_FILES)
+$(PYC_SOURCES): bytecompile.stamp
+bytecompile.stamp: $(PY_SOURCES)
+	python -m compileall $^ && touch $@
+
+build/chimi: | bytecompile.stamp
+build/chimi: $(PY_SOURCES) $(PYC_SOURCES) $(DATA_FILES)
 	(test -d build || mkdir build) && \
 	zip $@.tmp $^ && \
 	echo '#!/usr/bin/env python' | cat - $@.tmp > $@ && \
