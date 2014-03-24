@@ -18,6 +18,10 @@
 
 import os
 import re
+import sys
+import fcntl
+import struct
+import termios
 import datetime
 
 ANSI_COLORS={
@@ -35,6 +39,22 @@ ANSI_COLORS={
 ANSI_STYLES={'bold': 1, 'underline': 4, 'blink': 25}
 
 FORMAT_DURATION_DEFAULT_SIGNIFICANT_UNITS = 2
+TERMINAL_SIZE_INPUT_DATA = struct.pack('HHHH', 0, 0, 0, 0)
+
+# This function was copied from the StackOverflow answer at
+# <https://stackoverflow.com/a/3010495>.
+def terminal_size(fd=None):
+    """
+    Get the width and height of the terminal on FD.  FD defaults to standard
+    output if not given.
+
+    """
+    if fd is None:
+        fd = sys.stdout.fileno()
+    h, w, hp, wp = \
+        struct.unpack('HHHH', fcntl.ioctl(fd, termios.TIOCGWINSZ,
+                                          TERMINAL_SIZE_INPUT_DATA))
+    return w, h
 
 def create_struct(module, name, **defaults):
     """Create a structure type with default values for each field."""
@@ -279,10 +299,11 @@ class Table(object):
         self.columns = cols
         self.types = types
         self.rows = []
+
         self.max_width = max_width \
             if max_width \
-            else (int(os.environ['COLUMNS']) - 8 \
-                      if 'COLUMNS' in os.environ \
+            else (terminal_size(sys.stdout.fileno())[0] \
+                      if sys.stdout.isatty() \
                       else Table.DEFAULT_MAX_WIDTH)
         self.col_sep = col_sep
         self.range = range(len(self.columns))
