@@ -465,11 +465,16 @@ class ChaNGaDefinition(PackageDefinition):
 
         # Find a matching Charm++ build.
         charm = package.package_set['charm']
-        charm_build = charm.find_build(config)
+        charm_build = charm.find_build(config, require_matching_branch=False)
 
         if charm_build == None:
             sys.stderr.write("No matching Charm++ build found -- building now.\n")
-            charm_build = charm.build(config)
+
+            charm_config = copy.copy(config)
+            if not charm_config.branch in charm.branches:
+                charm_config.branch = charm.branch
+
+            charm_build = charm.build(charm_config)
             if charm_build.status.failure:
                 sys.stderr.write("\033[1;31mCharm build failed:\033[0m ChaNGa build aborted.\n")
                 return None
@@ -478,9 +483,10 @@ class ChaNGaDefinition(PackageDefinition):
                     charm.add_build(charm_build, replace=replace)
                 package.package_set.save_flag = True
 
+        assert(config.branch != None)
         _build = None
         if _continue:
-            _build = package.find_build(config)
+            _build = package.find_build(config, require_matching_branch=True)
             if not _build:
                 raise ValueError('No such build to continue')
             elif _build.compiled and not force:
@@ -488,9 +494,6 @@ class ChaNGaDefinition(PackageDefinition):
         else:
             _build = Build(package, config)
             package.add_build(_build, replace=replace) # Register this build of the package
-
-        if package.branch != config.branch:
-            check_call(['git', 'checkout', config.branch], cwd=package.directory)
 
         # Ensure that the build directory exists, and cd into it.
         if not os.path.isdir(_build.directory):
@@ -807,13 +810,14 @@ class CharmDefinition(PackageDefinition):
     def build(self, package, config, _continue=False, replace=False, force=False):
         srcdir = package.directory
 
+        assert(config.branch != None)
         if len(CharmDefinition.Architectures) == 0:
             self.load_architectures(srcdir)
 
         opts = []
         _build = None
         if _continue:
-            _build = package.find_build(config)
+            _build = package.find_build(config, require_matching_branch=True)
             if not _build:
                 raise ValueError('No such build to continue')
         else:
@@ -949,7 +953,16 @@ class Package(object):
         if not isinstance(config.branch, str):
             config.branch = self.branch
 
-        return self.definition.build(self, config, **kwargs)
+        old_branch = self.branch
+        if self.branch != config.branch:
+            check_call(['git', 'checkout', config.branch], cwd=package.directory)
+
+        try:
+            return self.definition.build(self, config, **kwargs)
+        finally:
+            if self.branch != old_branch:
+                check_call(['git', 'checkout', old_branch], cwd=package.directory)
+
 
     def purge_builds(self, config=None, names=None, uuids=None,
                      callback=None):
@@ -984,14 +997,16 @@ class Package(object):
             raise ValueError('Invalid argument type `%s\' to `find_build`'%type(config))
         return filter(lambda x: x.config == config, self.builds)
 
-
-    def find_build(self, config):
+    def find_build(self, config, require_matching_branch=False):
         """Find a build matching `config` for this package instance."""
         matches = self.find_builds(config)
-        if len(matches) > 1:
-            matches = filter(lambda x: x.config.branch == config.branch, matches)
+        bmatches = filter(lambda x: x.config.branch == config.branch, matches)
 
-        if len(matches) > 0:
+        if require_matching_branch:
+            return bmatches[0] if len(bmatches) > 0 else None
+        elif len(bmatches) > 0:
+            return bmatches[0]
+        elif len(matches) > 0:
             return matches[0]
         else:
             return None
