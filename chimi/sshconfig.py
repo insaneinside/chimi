@@ -39,12 +39,17 @@ class SSHConfig(object):
     ## Search for configuration value NAME (optionally for host HOST), and
     #  return the global value if not found.
     def value(self, name, host=None):
+        o = None
         if host != None and host in self.host_settings:
-            return self.host_settings[host][name]
+            o = self.host_settings[host][name]
         elif name in self.global_settings:
-            return self.global_settings[name]
+            o = self.global_settings[name]
         elif name in SSHConfig.DEFAULTS:
-            return SSHConfig.DEFAULTS[name]
+            o = SSHConfig.DEFAULTS[name]
+
+        if o:
+            o = os.path.expanduser(o)
+        return o
 
     # Load an SSH config file.
     #
