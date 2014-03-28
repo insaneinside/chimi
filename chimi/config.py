@@ -126,7 +126,7 @@ class HostBuildConfig(object):
         negated_options: list of options that should not be applied.
 
         """
-        assert(isinstance(build_config, chimi.core.BuildConfig))
+        assert(isinstance(build_config, chimi.build.BuildConfig))
         for optname in self.options:
             if not optname in negated_options:
                 opt = self.options[optname]

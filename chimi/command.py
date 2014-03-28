@@ -403,7 +403,7 @@ def make_build_config(config, force=False,
         kwargs['branch'] = config['branch']
 
     # Make the config into an actual build configuration.
-    config = chimi.core.BuildConfig(config['arch'], config['options'], config['settings'], config['extras'],
+    config = chimi.build.BuildConfig(config['arch'], config['options'], config['settings'], config['extras'],
                                     **kwargs)
 
     # Load additional build settings from the host-data file.
