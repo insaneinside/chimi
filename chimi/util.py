@@ -333,7 +333,7 @@ class Table(object):
             self.rows.append(data)
 
 
-    def render(self, color=False):
+    def render(self, use_color=False):
         column_widths = self.column_data_widths
         slop = self.max_width - (sum(column_widths) + self.col_sep * (len(self.columns) - 1))
 
@@ -373,7 +373,7 @@ class Table(object):
 
         o = ''
         rows = list(self.rows)
-        if color:
+        if use_color:
             fmt = "\033[1m%s\033[m"
             rows.insert(0, [fmt%col for col in self.columns])
 
@@ -386,9 +386,13 @@ class Table(object):
                 pre_str = ''
                 value = str(entry)
                 post_str = ''
-                match = self.color_re.match(value)
-                if match:
-                    pre_str, value, post_str = match.groups()
+                if '\033' in value:
+                    match = self.color_re.match(value)
+                    if match:
+                        if use_color:
+                            pre_str, value, post_str = match.groups()
+                        else:
+                            pre_str, value, post_str = ('', match.group(2), '')
                 rv.extend([pre_str, value, post_str])
             o += row_format % tuple(rv)
 
