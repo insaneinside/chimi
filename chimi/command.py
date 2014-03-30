@@ -394,6 +394,12 @@ def build(config, which=None, *args):
     else:
         raise ValueError('Unknown `build` argument: %s' % which)
 
+    purge_callback = lambda x: sys.stderr.write("  %s build \"%s\"\n" % \
+                                                    ('purging'
+                                                     if not chimi.settings.noact
+                                                     else 'would purge',
+                                                     x.name))
+
     for item in which:
         package = ps.packages[item]
         config = chimi.build.BuildConfig.create(package, arch=arch, opts=opts,
@@ -401,7 +407,10 @@ def build(config, which=None, *args):
         if purge == 'all':
             package.purge_builds()
         elif isinstance(purge,bool) and purge:
-            package.purge_builds(config=config)
+            sys.stderr.write('Purging from %s:\n'%package.definition.name)
+            n = package.purge_builds(config=config, callback=purge_callback)
+            if not n:
+                sys.stderr.write('  hmmm, no builds matched.\n')
         elif isinstance(purge,str):
             purge_builds = purge.split(',')
             hd = r'[a-fA-F0-9]'
@@ -415,11 +424,7 @@ def build(config, which=None, *args):
                     names.append(s)
             sys.stderr.write('Purging from %s:\n'%package.definition.name)
             n = package.purge_builds(names=names, uuids=uuids,
-                                     callback=lambda x: \
-                                         sys.stderr.write("  %s build \"%s\"\n"%('purging' \
-                                                                                     if not chimi.settings.noact \
-                                                                                     else 'would purge',
-                                                                                 x.name)))
+                                     callback=purge_callback)
             if not n:
                 sys.stderr.write('  hmmm, no builds matched.\n')
         else:               # We're actually building something.
