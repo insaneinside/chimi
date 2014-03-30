@@ -307,7 +307,7 @@ class ChaNGaDefinition(PackageDefinition):
             package.add_build(_build, replace=replace) # Register this build of the package
 
         # Ensure that the build directory exists, and cd into it.
-        if not os.path.isdir(_build.directory):
+        if not os.path.isdir(_build.directory) and not chimi.settings.noact:
             os.makedirs(_build.directory)
         build_dir = _build.directory
 
