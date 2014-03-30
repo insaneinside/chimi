@@ -523,7 +523,11 @@ class CharmDefinition(PackageDefinition):
     def get_build_version(self, build):
         version_file = os.path.join(build.directory, 'tmp', 'VERSION')
         if os.path.exists(version_file):
-            tagged = file(version_file, 'r').read().strip()
+            raw = file(version_file, 'r').read().strip()
+            if re.match(r'^[0-9a-fA-F]+$', raw):
+                return raw
+
+            tagged = raw
             tags = [re.escape(tag.name) for tag in build.package.repository.tags]
             _re = re.compile(r'^(%s)(?:-[0-9]+)?(?:-g([0-9a-fA-F]+))?'%'|'.join(tags))
 
