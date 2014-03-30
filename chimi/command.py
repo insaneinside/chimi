@@ -22,17 +22,17 @@ from __future__ import print_function
 __author__    = 'Collin J. Sutton'
 __copyright__ = 'Copyright (C) 2014 Collin J. Sutton'
 __license__   = 'GPLv2'
+
 import os
 import re
 import sys
-import yaml
-import string
-import inspect
-import subprocess
+
+from chimi.option import Option, OptionParser
 
 import chimi
-import chimi.lmod
-from chimi import *
+import chimi.job
+import chimi.core
+import chimi.settings
 
 basename = os.path.basename(sys.argv[0])
 
@@ -210,6 +210,7 @@ class Command(object):
 
 
 def load_platform_resources():
+    import chimi.lmod
     if chimi.lmod.available:
         chimi.lmod.load('cuda')
         chimi.lmod.load('git')
@@ -715,7 +716,6 @@ def show_builds(opts, *args):
         sys.stderr.write('No matching builds.\n')
     return 0
 
-import chimi.job
 COMMAND_LIST = [
     Command('init', ['DIR'], 'Bootstrap Chimi configuration from existing files.',
             [], None, bootstrap),

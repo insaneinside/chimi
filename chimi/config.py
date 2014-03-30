@@ -25,11 +25,9 @@ __license__   = 'GPLv2'
 import os
 import re
 import sys
-import yaml
 import socket
-import pkg_resources
-import chimi.core
 
+import chimi.util
 
 DEFAULT_COMMS_TYPE='net'
 """Default Charm++ communications transport to use"""
@@ -290,6 +288,8 @@ class HostConfig(object):
             load a configuration for the current host.
 
         """
+        import yaml
+        import pkg_resources
 
         matching_files = []
         available_files = pkg_resources.resource_listdir(__name__, 'data/host')
@@ -314,6 +314,9 @@ class HostConfig(object):
 
     @classmethod
     def find_host_file_by_name(self, name):
+        import yaml
+        import pkg_resources
+
         index = yaml.load(pkg_resources.resource_string(__name__, 'data/host-index.yaml'))
         if name in index:
             return index[name]

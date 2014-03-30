@@ -28,5 +28,7 @@ parentdir = os.path.dirname(__dir__)
 if os.path.exists(os.path.join(parentdir, 'Makefile')):
     sys.path.insert(0, parentdir)
 
-import chimi.command
+import chimi.transient
+chimi.transient.import_(__name__, 'chimi.command')
+
 exit(chimi.command.main())

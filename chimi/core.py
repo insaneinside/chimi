@@ -23,7 +23,6 @@ __license__   = 'GPLv2'
 import os
 import re
 import sys
-import yaml
 import uuid
 import time
 import copy
@@ -34,27 +33,19 @@ import threading
 import subprocess
 from collections import Counter
 
+import chimi
 import chimi.util
 import chimi.settings
+import chimi.transient
 from chimi.build import Build
 from chimi.build import BuildStatus
 from chimi.build import BuildConfig
 
 git = None
 
-def load_git():
-    if not chimi.core.git:
-        from datetime import datetime
-        b = datetime.now()
-        sys.stderr.write('(Loading `git\'... ')
-        import git
-        sys.stderr.write(chimi.util.format_duration(datetime.now() - b)+')')
+git = chimi.transient.OnDemandLoader(__name__, 'git')
+yaml = chimi.transient.OnDemandLoader(__name__, 'yaml' )
 
-        if sys.stderr.isatty():
-            sys.stderr.write('\033[K\r')
-        else:
-            sys.stderr.write("\n")
-        chimi.core.git = git
 
 def check_call(call, cwd=None):
     oldcwd = os.getcwd();

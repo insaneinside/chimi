@@ -39,10 +39,8 @@ import signal
 import threading
 import datetime
 import chimi.config
+import chimi.transient
 import chimi.command
-
-saga = None
-
 
 __all__ = ['ADAPTORS', 'JOB_MANAGERS', 'build_changa_args', 'service_uri',
            'run', 'watch', 'cancel']
@@ -52,15 +50,10 @@ ADAPTORS_DIR=None
 ADAPTOR_DIRS=None
 
 def load_saga():
-    if not chimi.job.saga:
-        from datetime import datetime
-        b = datetime.now()
-        sys.stderr.write('(Loading `saga\'... ')
-
-        import saga
-        import saga.job
-        import saga.adaptors
-        chimi.job.saga = saga
+    if not 'saga' in chimi.job.__dict__:
+        chimi.transient.import_(__name__, 'saga')
+        chimi.transient.import_(__name__, 'saga.job')
+        chimi.transient.import_(__name__, 'saga.adaptors')
 
         # SAGA-Python loads adaptors on-demand, but we want to be able to query their
         # supported URI schemas here; manually load them.
@@ -75,7 +68,7 @@ def load_saga():
                 subname = re.sub('\.py$', '', f)
                 modname = '.'.join([name, subname])
                 try:
-                    __import__('saga.adaptors.%s'%modname)
+                    chimi.transient.import_(__name__, 'saga.adaptors.%s'%modname)
                     mod = getattr(saga.adaptors, name)
                     mod = getattr(mod, subname)
                     if '_ADAPTOR_DOC' in dir(mod):
@@ -108,11 +101,6 @@ def load_saga():
                 del manager_name
                 del dual_modes
             del ad
-        sys.stderr.write(chimi.util.format_duration(datetime.now() - b) + ')')
-        if sys.stderr.isatty():
-            sys.stderr.write('\033[K\r')
-        else:
-            sys.stderr.write("\n")
 
 def service_uri(job_manager, hostname=None, access_type=None,
                 host_config=None):
@@ -173,12 +161,12 @@ def apply_tree(to, tree, root=None):
         else:
             to[assign_key] = value
 
-import yaml
-import pkg_resources
 def make_launch_config(build, host_config, architectures):
-    # Copy the host configuration
-    lc = chimi.config.HostJobConfig.LaunchConfig(host_config.jobs.launch)
+    import yaml
+    import pkg_resources
 
+    # Copy the host configuration
+    lc = copy.copy(host_config.jobs.launch)
     option_db = yaml.load(pkg_resources.resource_string(__name__, 'data/option.yaml'))
     arch_db = yaml.load(pkg_resources.resource_string(__name__, 'data/architecture.yaml'))
     for option in build.config.options:
@@ -211,6 +199,7 @@ def build_charm_extension(package_set):
     if not os.path.exists(extension_path):
         if not os.path.isdir(extension_dir):
             os.makedirs(extension_dir)
+        import pkg_resources
         charm_source_string = pkg_resources.resource_string(__name__, 'data/ext/charm.cc')
         charm_source_path = os.path.join(extension_dir, 'charm.cc')
 
@@ -290,6 +279,7 @@ def build_changa_invocation(opts, job_description, build,
 
     """
     assert(isinstance(job_description, saga.job.Description))
+    import chimi.core
 
     # Find the architectures -- actual and base -- of the build.
     if not len(chimi.core.CharmDefinition.Architectures) > 0:
@@ -465,8 +455,9 @@ def create_job_service(opts, host_config):
             for name in cxt_settings:
                 setattr(context, name, cxt_settings[name])
         elif not host_config.matches_current_host:
+            chimi.transient.import_(__name__, 'chimi.sshconfig')
             context = saga.Context('ssh')
-            ssh_config = chimi.SSHConfig()
+            ssh_config = chimi.sshconfig.SSHConfig()
 
             if user_name == None:
                 user_name = ssh_config.value('User', host_name)
@@ -499,6 +490,7 @@ def run(opts, *args, **kwargs):
     if args[0] == '--':
         del args[0]
 
+    import chimi.command
     ps = chimi.command.find_current_package_set() # FIXME: make this work for remote hosts?
 
     # Select the build to use for the job.
