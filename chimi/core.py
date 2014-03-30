@@ -736,7 +736,10 @@ class CharmDefinition(PackageDefinition):
             build_args = ['gmake', 'basics', 'ChaNGa']
         else:
             build_cwd = srcdir
-            build_args = ['./build', 'ChaNGa', config.architecture.name]
+            build_args = ['./build', 'ChaNGa',
+                          config.architecture
+                          if isinstance(config.architecture, basestring)
+                          else config.architecture.name]
             build_args.extend(config.components)
             build_args.extend(build_configure_flags(self, config))
             build_args.extend(config.extras)
