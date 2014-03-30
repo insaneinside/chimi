@@ -10,6 +10,8 @@ aliases: ['lonestar', 'lonestar4',
   'login1.ls4.tacc.utexas.edu','login2.ls4.tacc.utexas.edu',
   'login3.ls4.tacc.utexas.edu','login4.ls4.tacc.utexas.edu']
 
+module-system: 'lmod'
+
 build:
   architecture: 'net-linux-x86_64'
   options:

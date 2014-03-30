@@ -9,7 +9,7 @@ hostname: 'stampede.tacc.utexas.edu'
 aliases: ['stampede',
   'login1.stampede.tacc.utexas.edu','login2.stampede.tacc.utexas.edu',
   'login3.stampede.tacc.utexas.edu','login4.stampede.tacc.utexas.edu']
-
+module-system: 'lmod'
 build:
   architecture: 'net-linux-x86_64'
   options:

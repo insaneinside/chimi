@@ -700,6 +700,8 @@ is made to automatically determine the appropriate build architecture.
                               '  When this option is specified, the first argument that'
                               ' matches the string \'{}\' will be replaced with the '
                               'path to the ChaNGa executable.').store(),
+                       Option('m', 'module', 'Load MODULE(s) using the host\'s module system.',
+                              'MODULE[,MODULE]...').store(multiple=True),
                        Option('C', 'cwd', 'Run in DIR (use as CWD)', 'DIR').store(),
                        Option('O', None, 'Set SAGA job-description attributes.',
                               'ATTR=VAL[,ATTR=VAL]...').store(multiple=True),

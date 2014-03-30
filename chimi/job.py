@@ -592,8 +592,24 @@ def run(opts, *args, **kwargs):
     invocation = chimi.job.build_changa_invocation(opts, job_desc, build,
                                                    ps, host_config, args,
                                                    'e' in opts)
-    job_desc.executable = invocation[0]
-    job_desc.arguments = invocation[1:]
+    import subprocess
+    from subprocess import list2cmdline
+
+    if not 'module' in opts:
+        job_desc.executable = invocation[0]
+        job_desc.arguments = invocation[1:]
+    else:
+        commands = []
+
+        job_desc.executable = 'sh'
+        job_desc.arguments = ['-c']
+
+        mods = map(lambda x: x.strip() if isinstance(x, basestring) else '', opts['module'])
+        for mod in filter(lambda x: x != '', mods):
+            commands.append(['module', 'load', mod])
+
+        commands.append(invocation)
+        job_desc.arguments.append('; '.join([list2cmdline(cmd) for cmd in commands]))
 
     sys.stderr.write("okay.\n")
 
@@ -604,7 +620,7 @@ def run(opts, *args, **kwargs):
     jdexec.extend(job_desc.arguments)
     print('\033[1m          Service:\033[0m %s' % service.url)
     print('\033[1mWorking directory:\033[0m %s' % job_desc.working_directory)
-    print('\033[1m          Command:\033[0m %s' % ' '.join(jdexec))
+    print('\033[1m          Command:\033[0m %s' % list2cmdline(jdexec))
 
     if 'noact' in opts or chimi.settings.noact:
         return

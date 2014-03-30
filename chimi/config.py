@@ -231,8 +231,9 @@ class HostConfig(object):
 
     jobs: a HostJobConfig instance.
 
-    """
+    module_system: name of the module system in use on the host, if any.
 
+    """
 
     def __init__(self, d=None, aliases=None, build=None, jobs=None):
         if isinstance(d, dict) and aliases==None and build == None and jobs == None:
@@ -253,6 +254,11 @@ class HostConfig(object):
                 self.jobs = HostJobConfig(d['jobs'])
             else:
                 self.jobs = HostJobConfig({})
+
+            if 'module-system' in d:
+                self.module_system = d['module-system']
+            else:
+                self.module_system = None
         else:
             hostname = d
             if hostname:
