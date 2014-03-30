@@ -236,7 +236,7 @@ def is_root_dir(_dir):
 
 def find_current_package_set():
     _dir = os.getcwd()
-
+    PackageSet = chimi.core.PackageSet
     check = os.path.join(_dir, PackageSet.SET_FILE)
     if os.path.exists(check):
         return PackageSet.load(_dir);
@@ -441,10 +441,10 @@ def build(config, which=None, *args):
 
 def bootstrap(opts, directory):
     directory = os.path.abspath(directory)
-    if os.path.exists(os.path.join(directory, PackageSet.SET_FILE)):
+    if os.path.exists(os.path.join(directory, chimi.core.PackageSet.SET_FILE)):
         raise RuntimeError('Directory is already initialized')
     else:
-        ps = PackageSet(directory)
+        ps = chimi.core.PackageSet(directory)
         ps.save_flag = True
         ps.save()
 
@@ -532,13 +532,13 @@ def show_architectures(opts, *args):
         list_only = True
 
     if len(args) == 0:
-        args = sorted(CharmDefinition.Architectures.keys());
+        args = sorted(chimi.core.CharmDefinition.Architectures.keys());
     else:
         # Show _all_ architectures that the user explicitly asked to see.
         _type = 'all'
 
     for aname in args:
-        arch = CharmDefinition.Architectures[aname]
+        arch = chimi.core.CharmDefinition.Architectures[aname]
         if (arch.is_base and _type == 'build') or \
                 (_type == 'base' and not arch.is_base) or \
                 (arch.name == 'common' and _type != 'all'):
@@ -619,10 +619,8 @@ def show_builds(opts, *args):
             t.append((_build.name, _build.uuid, _build.config.branch,
                       _build.version, ' '.join(_build.config.components), status))
 
-        sys.stderr.write(str(time.clock() - sys.modules['__main__'].chimi_process_start_clock) + 's\n')
-        print(t.render(color=use_color))
+        print(t.render(use_color=use_color))
     else:
-        sys.stderr.write(str(time.clock() - sys.modules['__main__'].chimi_process_start_clock) + 's\n')
         sys.stderr.write('No matching builds.\n')
     return 0
 

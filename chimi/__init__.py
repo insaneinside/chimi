@@ -41,5 +41,8 @@ from chimi.config import *
 from chimi.util import *
 from chimi.sshconfig import SSHConfig
 
+# import chimi.perfutil
+# perftable = chimi.perfutil.TimeTable(True)
+
 import chimi.transient
 chimi.transient.import_(__name__, 'chimi.job')

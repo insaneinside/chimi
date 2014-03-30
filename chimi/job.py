@@ -34,13 +34,11 @@ import re
 import sys
 import stat
 import math
+import copy
 
-import signal
 import threading
-import datetime
 import chimi.config
 import chimi.transient
-import chimi.command
 
 __all__ = ['ADAPTORS', 'JOB_MANAGERS', 'build_changa_args', 'service_uri',
            'run', 'watch', 'cancel']
@@ -611,6 +609,9 @@ def watch(opts=None, *args, **kwargs):
     else:
         job = find_job(opts, *args, **kwargs)
 
+    if not job:
+        return
+
     if 'job_description' in kwargs:
         job_description = kwargs['job_description']
     elif 'description' in job.__dict__:
@@ -623,6 +624,7 @@ def watch(opts=None, *args, **kwargs):
     JobAttributeInfo = chimi.util.create_struct(None, 'JobAttributeInfo',
                                                 last_value=None,
                                                 last_update=None)
+    import datetime
     def job_attr_update(self, value):
         self.last_value = value
         self.last_update = datetime.datetime.now()
