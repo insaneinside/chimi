@@ -627,7 +627,14 @@ def run(opts, *args, **kwargs):
 
 def find_job(opts, *args, **kwargs):
     service = create_job_service(opts, kwargs['host_config'])
-    return service.get_job(service.list()[0])
+    jobs = service.list()
+    try:
+        if not len(jobs):
+            raise RuntimeError('no jobs exist.')
+        else:
+            return service.get_job(jobs[0])
+    except Exception as err:
+        sys.stderr.write('Failed to get job: %s\n'%err.message)
 
 def _list(opts, *args, **kwargs):
     sys.stdout.write('\n'.join(create_job_service(opts, kwargs['host_config']).list())+"\n")
