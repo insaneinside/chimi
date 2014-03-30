@@ -522,6 +522,7 @@ def show_architectures(opts, *args):
     if not len(chimi.core.CharmDefinition.Architectures) > 0:
         chimi.core.CharmDefinition.load_architectures(ps.packages['charm'])
 
+    use_color = sys.stdout.isatty()
     sym_pfx = ''
     unique = False
     if 'unique' in opts:
@@ -542,6 +543,7 @@ def show_architectures(opts, *args):
         # Show _all_ architectures that the user explicitly asked to see.
         _type = 'all'
 
+    name_fmt = '\033[1;97m%s\033[0m%s' if use_color else '%s%s'
     for aname in args:
         arch = chimi.core.CharmDefinition.Architectures[aname]
         if (arch.is_base and _type == 'build') or \
@@ -553,7 +555,7 @@ def show_architectures(opts, *args):
         inh_str = ''
         if arch.parent and not list_only:
             inh_str = ' (%s)' % arch.parent.name
-        sys.stdout.write('\033[1;97m%s\033[0m%s' % (arch.name, inh_str))
+        sys.stdout.write(name_fmt % (arch.name, inh_str))
 
         opts = []
         cc = []
