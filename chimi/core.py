@@ -327,7 +327,6 @@ class ChaNGaDefinition(PackageDefinition):
                 _build.update(BuildStatus.ConfigureFailed)
             except KeyboardInterrupt:
                 _build.update(BuildStatus.InterruptedByUser)
-                pass
             else:
                 _build.update(BuildStatus.Configured)
                 assert(_build.status == BuildStatus.Configured)
