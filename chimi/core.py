@@ -339,6 +339,8 @@ class ChaNGaDefinition(PackageDefinition):
                 check_call(['make'], cwd=_build.directory)
             except subprocess.CalledProcessError:
                 _build.update(BuildStatus.CompileFailed)
+            except KeyboardInterrupt:
+                _build.update(BuildStatus.InterruptedByUser)
             else:
                 _build.update(BuildStatus.Complete, 'ChaNGa build complete.')
 
