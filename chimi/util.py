@@ -74,7 +74,7 @@ def create_struct(__module, __name, **__defaults):
     return __type
 
 
-def wrap_text(_in, start_col=0, max_col=75):
+def wrap_text(_in, start_col=0, max_col=75, respect_newlines=True):
     """
     Wrap text within the given column boundaries, filling the area before
     `start_col` with spaces.
@@ -89,19 +89,77 @@ def wrap_text(_in, start_col=0, max_col=75):
     if len(_in) <= width:
         return _in
 
-    strs=_in.split('\n')
+    sep = None
+    strs = []
+
+    if respect_newlines:
+        sep = '\n'
+        strs=_in.split(sep)
+    else:
+        # Only respect double-newlines and indented text.
+        sep = '\n'
+
+        base_strs = _in.split('\n')
+        cs = ''
+        last_indent = 0
+        last_indent_bullet = 0
+
+        def append_current():
+            if len(cs) > 0:
+                strs.append(((last_indent, last_indent_bullet), cs))
+
+        for s in base_strs:
+            if len(s) == 0:
+                append_current()
+                if len(strs) > 0 and len(strs[-1][1]) > 0:
+                    strs.append(((0, 0), s))
+                cs = ''
+            else:
+                m = re.match(r'(\s+([\*-+>]\s*)?)', s)
+                indent, indent_bullet = (len(m.group(1)),
+                                         len(m.group(2)) if m.group(2) else 0) \
+                                         if m else (0, 0)
+                if indent > 0:
+                    if indent == last_indent and indent_bullet == 0:
+                        cs += ' ' + s.strip()
+                    else:
+                        append_current()
+                        cs = s.strip()
+                else:
+                    cs += ' ' + s.strip() if len(cs) > 0 else s.strip()
+
+                last_indent = indent
+                last_indent_bullet = indent_bullet if indent_bullet else last_indent_bullet
+
+        append_current()
+
     out = ''
 
-    for s in strs:
+    for obj in strs:
+        s = None
+        indent = (0, 0)
+        if isinstance(obj, tuple):
+            indent, s = obj
+        else:
+            s = obj
+
         if out != '':
-            out += "\n" + ' ' * start_col
+            out += sep + ' ' * (start_col + indent[0] - indent[1])
+
         while len(s) > width:
             front = s[0:width]
             parts = front.rpartition(' ')
             s = parts[2].strip() + s[width:]
 
+            if parts[:-1] == ('', ''):
+                m = re.match(r'^(.+)(\s+)?(.+)?$', s)
+                parts = m.groups()
+                parts = (parts[0],
+                         parts[1] if parts[1] else '',
+                         parts[2] if parts[2] else '')
+                s = ''
             front = parts[0]
-            out += "%s\n%s" % (front, ' ' * start_col)
+            out += "%s\n%s" % (front, ' ' * (start_col+indent[0]) if len(s) > 0 else '')
         out += s.strip()
     return out
 
