@@ -13,8 +13,15 @@
 #
 # The GNU General Public License version 2 may be found at
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
+"""
+Classes and functions that implement Chimi's commands interface.
+
+"""
 from __future__ import print_function
 
+__author__    = 'Collin J. Sutton'
+__copyright__ = 'Copyright (C) 2014 Collin J. Sutton'
+__license__   = 'GPLv2'
 import os
 import re
 import sys
@@ -29,6 +36,8 @@ from chimi import *
 
 basename = os.path.basename(sys.argv[0])
 
+__all__ = ['CommandError', 'CommandUsageError', 'SubcommandError', 'Command',
+           'find_current_package_set', 'main']
 
 class CommandError(Exception):
     pass
@@ -153,7 +162,9 @@ class Command(object):
             options.extend(chimi.OptionParser.flatten(self.options))
 
 
-        # Make "-h" work for printing the help string for any command
+        # Make "-h" work for printing the help string for any command.
+        # Anything after this option will be ignored -- even subcommands (and
+        # "-h" flags that follow them).
         def impromptu_help(self):
             sys.stdout.write(self.help)
             exit(0)
@@ -716,6 +727,7 @@ COMMAND_LIST = [
             "If COMMAND is given, show help for that command.  Otherwise, "+
             "show a\nlist of available commands.",
             lambda x, *y: helpfn(x, *y, command_list=COMMAND_LIST)),
+    # Build.
     Command('build', ['[all|changa|charm]'], 'Build a package.',
             [('Configuration options',
               Option(None, 'arch', 'Specify Charm++ build architecture.', 'ARCH').store(),
@@ -755,13 +767,17 @@ case, the `--arch' option accepts base architectures as well
 is made to automatically determine the appropriate build architecture.
 
 """ % (basename, basename), build),
+    # Job
     Command('job', ['CMD', '[ARG]...'], 'Manage job(s) on local or remote nodes.',
             [Option('H', 'host', 'Manipulate jobs on remote HOST via SSH [default: local]',
                     '[USER@]HOST').store(),
-             Option('m', 'manager', 'Specify/override job manager to use.', 'MANAGER').store(),
-             ], None,
+             Option('m', 'manager', 'Specify/override job manager (job-service'
+                    ' adaptor) to use.', 'MANAGER').store()],
+            'See help for the `run\' subcommand for where to find a list of '
+            'available job-service adaptors.',
             callback=chimi.job.common,
             subcommands=[
+            # Run
             Command('run', ['ARG...'], 'Run ChaNGa in a manner appropriate to the current or selected host.',
                     [('Run-time options',
                       [Option(None, 'build', 'Use the build given by name or id.', 'NAME|UUID').store(),
@@ -781,9 +797,9 @@ is made to automatically determine the appropriate build architecture.
                     """
 Chimi's `run' command uses the SAGA interface for Python (see
 http://saga-project.github.io/saga-python/), which provides a heterogenous API
-for accessing HPC resources.  Each job-management service supports a different
-set of job-description attributes; see the adaptor documentation (link below)
-for details.
+for accessing HPC resources.  A list of the available job-service adaptors, and
+the job-description attributes available for each, is available in the adaptor
+documentation (link below).
 
 Note that even though the SAGA-Python documentation uses CamelCase in listing
 job-description attributes, both the API itself and this tool require that they
@@ -796,16 +812,21 @@ http://saga-project.github.io/saga-python/doc/adaptors/saga.adaptor.index.html
 
 """
                     , callback=chimi.job.run),
+            # Watch
             Command('watch', ['JOB'], 'Watch a job for state changes.',
                     [], None, chimi.job.watch),
+            # Cancel
             Command('cancel', ['JOB'], 'Cancel a job.',
                     [], None, chimi.job.cancel),
+            # List
             Command('list', [], 'List jobs.',
                     [], None, chimi.job._list),
             ]),
+    # Status
     Command('status', [], 'List recorded build/package information.',
             [Option('r', 'reltime', 'Use relative time stamps').store() ],
             None, list_items),
+    # Show
     Command('show', ['COMMAND'], 'Show useful information about various items.',
             [], None,
             subcommands=[
@@ -818,7 +839,8 @@ http://saga-project.github.io/saga-python/doc/adaptors/saga.adaptor.index.html
                             'is "build", "base", "both", or "all". (default: build).',
                             'TYPE').store(),
                      Option('l', 'list', 'List only the names of available architectures').store(),
-                     Option('u', 'unique', 'Show only non-inherited options and compilers').store()],
+                     Option('u', 'unique', 'Show only non-inherited options and '
+                            'compilers for each architecture.').store()],
                     """
 This command requires an initialized Chimi directory.
 
@@ -831,7 +853,7 @@ compilers available for each.
 The `--type' option accepts several values, which are explained here.
   * "build" shows architectures that are available for use in a Charm++ build.
   * "base" shows non-build architectures from which one or more build
-     architectures inherit code and/or options.
+    architectures inherit code and/or options.
   * "both" shows both build and base architectures.
   * "all" is equivalent to "both", but also shows the `common' architecture,
     which is inherited by all base architectures.

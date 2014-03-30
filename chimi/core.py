@@ -13,6 +13,13 @@
 #
 # The GNU General Public License version 2 may be found at
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
+
+
+__author__    = 'Collin J. Sutton'
+__copyright__ = 'Copyright (C) 2014 Collin J. Sutton'
+__license__   = 'GPLv2'
+
+
 import os
 import re
 import sys
@@ -315,6 +322,8 @@ class CharmArchitecture(object):
         Get all values for a property as specified in both the current object
         and all ancestors.  If a sequence is passed for `propnames`, a list of
         the results for each specified property name will be returned instead.
+        Using a this method with a sequence of property names should be more
+        efficient than calling the method once for each property name.
 
         """
         if isinstance(propnames, str):
@@ -668,10 +677,12 @@ class Package(object):
 
     @property
     def branch(self):
+        """Name of the currently checked-out branch"""
         return re.sub(r'^heads/', '', self.repository.git.describe(all=True))
 
     @property
     def repository(self):
+        """Git repository object for the package."""
         load_git()
         if self._repository != None:
             return self._repository
@@ -684,6 +695,10 @@ class Package(object):
 
     @property
     def remotes(self):
+        """
+        Fetch the names of all Git remote repositories.
+
+        """
         cwd = os.getcwd()
         out = []
         if os.path.exists(self.directory):

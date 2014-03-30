@@ -13,7 +13,21 @@
 #
 # The GNU General Public License version 2 may be found at
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
+
 from __future__ import print_function
+
+"""
+Job-management utilities for Chimi.  This module allows Chimi to
+semi-intelligently launch jobs on a variety of hosts, using host-,
+architecture-, and option-specific configuration data to influence the ChaNGa
+command-line for a job.
+
+"""
+
+
+__author__    = 'Collin J. Sutton'
+__copyright__ = 'Copyright (C) 2014 Collin J. Sutton'
+__license__   = 'GPLv2'
 
 import os
 import re
@@ -289,6 +303,7 @@ def build_changa_invocation(opts, job_description, build,
     build_charm_extension(package_set)
     import charm
 
+    # Construct the launch configuration based on build and architecture settings.
     lc = make_launch_config(build, host_config, (arch, base_arch))
     out = []
 

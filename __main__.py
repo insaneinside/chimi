@@ -16,8 +16,13 @@
 # The GNU General Public License version 2 may be found at
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
 
-import sys
+
+__author__    = 'Collin J. Sutton'
+__copyright__ = 'Copyright (C) 2014 Collin J. Sutton'
+__license__   = 'GPLv2'
+
 import os
+import sys
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 parentdir = os.path.dirname(__dir__)
 if os.path.exists(os.path.join(parentdir, 'Makefile')):

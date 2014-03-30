@@ -1,4 +1,4 @@
-# chimi, acompanion tool for ChaNGa: package __init__ file
+# chimi, a companion tool for ChaNGa: package __init__ file
 # Copyright (C) 2014 Collin J. Sutton
 #
 # This program is free software; you can redistribute it and/or
@@ -13,6 +13,19 @@
 #
 # The GNU General Public License version 2 may be found at
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
+
+"""
+Chimi root namespace.
+
+Chimi is a companion tool for ChaNGa, the highly-parallel Charm++-based
+cosmological gravitational simulation.
+
+"""
+
+__author__    = 'Collin J. Sutton'
+__copyright__ = 'Copyright (C) 2014 Collin J. Sutton'
+__license__   = 'GPLv2'
+
 from chimi.option import Option
 from chimi.option import OptionParser
 from chimi.core import *

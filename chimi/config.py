@@ -14,9 +14,13 @@
 # The GNU General Public License version 2 may be found at
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
 
-"""Contains configuration-related classes"""
+"""Configuration-related classes for Chimi."""
 
 from __future__ import print_function
+
+__author__    = 'Collin J. Sutton'
+__copyright__ = 'Copyright (C) 2014 Collin J. Sutton'
+__license__   = 'GPLv2'
 
 import os
 import re
@@ -181,7 +185,7 @@ class HostJobConfig(object):
             return 'slurm'
         # FIXME: add detection for other job-management systems
         else:
-            # 'fork' is SAGA's shell-based adaptor; it uses no job-management
+            # 'shell' is SAGA's shell-based adaptor; it uses no job-management
             # system.
             return 'shell'
 

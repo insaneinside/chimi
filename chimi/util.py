@@ -14,7 +14,11 @@
 # The GNU General Public License version 2 may be found at
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
 
-"""Various misc. utility functions and classes"""
+"""Various misc. utility functions and classes for Chimi."""
+
+__author__    = 'Collin J. Sutton'
+__copyright__ = 'Copyright (C) 2014 Collin J. Sutton'
+__license__   = 'GPLv2'
 
 import os
 import re
@@ -334,6 +338,11 @@ class Table(object):
 
 
     def render(self, use_color=False):
+        """
+        Render the table to a string.
+
+        """
+
         column_widths = self.column_data_widths
         slop = self.max_width - (sum(column_widths) + self.col_sep * (len(self.columns) - 1))
 
@@ -373,6 +382,8 @@ class Table(object):
 
         o = ''
         rows = list(self.rows)
+
+        # Insert the header row
         if use_color:
             fmt = "\033[1m%s\033[m"
             rows.insert(0, [fmt%col for col in self.columns])

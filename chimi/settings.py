@@ -13,6 +13,12 @@
 #
 # The GNU General Public License version 2 may be found at
 # <http://www.gnu.org/licenses/gpl-2.0.html>.
+"""
+Various global settings and flags for Chimi.  These values are not necessarily
+associated with any one Chimi module.
+
+"""
+
 DEFAULT_REPOSITORIES={
     'charm' : 'http://charm.cs.uiuc.edu/gerrit/charm',
     'changa' : 'http://charm.cs.uiuc.edu/gerrit/changa',
