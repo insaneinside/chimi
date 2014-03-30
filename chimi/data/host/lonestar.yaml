@@ -30,3 +30,5 @@ jobs:
 
   # This field is the preferred hostname to use when logging in via SSH.
   host: lonestar.tacc.utexas.edu
+  launch:
+    spmd-variation: 12way

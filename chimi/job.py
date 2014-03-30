@@ -321,6 +321,9 @@ def build_changa_invocation(opts, job_description, build,
         if job_description.attribute_exists(saga.job.PROCESSES_PER_HOST) \
         else cpus_per_host
 
+    if 'spmd_variation' in lc.__dict__:
+        job_description.spmd_variation = lc.spmd_variation
+
     node_count = int(math.ceil(float(total_cpu_count) / processes_per_host))
 
     local_run = node_count <= 1
