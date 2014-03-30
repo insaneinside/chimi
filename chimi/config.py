@@ -97,53 +97,57 @@ class HostBuildOption(object):
 
 class HostBuildConfig(object):
     """Build configuration values for a specific host."""
-    def __init__(self, arch=None, options=None):
+    def __init__(self, arch=None, components=None):
         if isinstance(arch, dict) and options == None:
             d = arch
+
             if 'architecture' in d:
                 self.architecture = d['architecture']
             else:
                 self.architecture = chimi.config.get_architecture()
 
-            self.options = {}
-            if 'options' in d:
-                for oname in d['options']:
-                    self.options[oname] = HostBuildOption((oname, d['options'][oname]))
-        elif isinstance(arch, str) and isinstance(options, dict):
+            self.components = {}
+            if 'components' in d:
+                for oname in d['components']:
+                    self.components[oname] = HostBuildOption((oname, d['components'][oname]))
+        elif isinstance(arch, str) and isinstance(components, dict):
             self.architecture = arch
-            for oname in options:
-                self.options[oname] = HostBuildOption((oname, options[oname]))
+            for oname in components:
+                self.components[oname] = HostBuildOption((oname, components[oname]))
         else:
             self.architecture = chimi.config.get_architecture()
-            self.options = {}
+            self.components = {}
 
 
-    def apply(self, build_config, negated_options=[]):
+    def apply(self, build_config, negations):
         """
         Apply the host-specific build configuration to an individual package's
         build configuration
 
         build_config: the build configuration to modify
 
-        negated_options: list of options that should not be applied.
+        negations: Tuple of (components, features, settings) that should
+            not be applied.
 
         """
+        import chimi.build
         assert(isinstance(build_config, chimi.build.BuildConfig))
-        for optname in self.options:
-            if not optname in negated_options:
-                opt = self.options[optname]
+        negated_components, negated_features, negated_settings = negations
+        for optname in self.components:
+            if not optname in negated_components:
+                opt = self.components[optname]
                 # Set the build option if the host data specifies it should be used
                 # by default.
                 if opt.enable_by_default:
-                    build_config.options.append(optname)
+                    build_config.components.append(optname)
 
                 # If this option is set for the build (possibly by us), apply any
-                # additional options/settings/extra command-line arguments
+                # additional components/settings/extra command-line arguments
                 # specified in the host-data file.
-                if optname in build_config.options:
+                if optname in build_config.components:
                     # Enable all prerequisites for the option.
-                    build_config.options.extend(list(set(opt.prerequisite_options).
-                                                     difference(set(build_config.options))))
+                    build_config.components.extend(list(set(opt.prerequisite_components).
+                                                     difference(set(build_config.components))))
 
                     # Apply settings defined by the host configuration.
                     if len(opt.apply_settings) > 0:
@@ -154,7 +158,7 @@ class HostBuildConfig(object):
                     # configuration.
                     if len(opt.apply_extras) > 0:
                         build_config.extras.extend(opt.apply_extras)
-        build_config.options.sort()
+        build_config.components.sort()
 
     def __str__(self):
         return str(self.__dict__)

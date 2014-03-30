@@ -32,6 +32,46 @@ import uuid
 import chimi
 import chimi.settings
 
+__all__ = [ 'InvalidArchitectureError', 'InvalidBuildOptionError',
+            'BuildMessage', 'BuildStatus', 'BuildConfig', 'Build' ]
+
+class InvalidArchitectureError(chimi.Error):
+    """
+    Error type thrown when an attempt is made to create a BuildConfig with an
+    invalid architecture name.
+
+    """
+    def __init__(self, archname, qualifier=None):
+        self.architecture = archname
+        self.qualifier = qualifier
+    @property
+    def message(self):
+        return '%s%s`%s\' is not a valid Charm++ build architecture.' % \
+            (self.qualifier if self.qualifier else '',
+             ' ' if self.qualifier else '',
+             self.architecture)
+
+class InvalidBuildOptionError(chimi.Error):
+    """
+    Error type thrown when a unknown build option is specified when creating a
+    BuildConfig.
+
+    """
+    def __init__(self, package, option, raw_option=None):
+        self.package = package
+        self.option = option
+        self.raw_option = raw_option if raw_option != option else None
+
+    @property
+    def message(self):
+        return '`%s\' %sis not a valid %s.' % \
+            (self.option,
+             ('(specified as `%s\') ' % self.raw_option) \
+                 if self.raw_option else '',
+             'Charm++ component or configuration option' if \
+                 self.package.definition == chimi.core.CharmDefinition \
+                 else 'Charm++ component or ChaNGa configuration option')
+
 class BuildMessage(object):
     """A recorded build message"""
     time = None
@@ -149,6 +189,144 @@ class BuildConfig(object):
     build.
 
     """
+    @classmethod
+    def create(self, package, arch=None, opts=None, extras=None, branch=None,
+               ignore_unknown_options=False):
+        """
+        Create a build configuration for the given package instance.
+
+        package : chimi.core.Package
+
+            The package for which the build configuration is being created.
+
+        arch : None, str
+
+            User-specified architecture name.
+
+        opts : None, str, list<str>
+
+            String or list of strings containing comma-separated build options.
+
+        extras : None, list<str>
+
+            List of extra build/configure arguments.
+
+        branch : None, str
+
+            Name of the repository branch to use for the build.
+
+        ignore_unknown_options : bool
+
+            Whether an error should be thrown for unknown build options.
+
+        """
+        package_set = package.package_set
+        arch_name = arch
+        arch = None
+        chose_architecture = False
+        completed_architecture = False
+        available_arch_options = None
+        available_configure_options = None
+
+        # Load architecture definitions if not already loaded.
+        if not len(chimi.core.CharmDefinition.Architectures) > 0:
+            chimi.core.CharmDefinition.load_architectures(package_set.packages['charm'])
+
+        if not arch_name:
+            arch_name = chimi.config.get_architecture()
+            chose_architecture = True
+        elif arch_name in chimi.core.CharmDefinition.Architectures and\
+                chimi.core.CharmDefinition.Architectures[arch_name].is_base:
+            # Shorthand (base arch) name given.  Fill it in for the user.
+            arch_name = chimi.config.get_architecture(arch_name)
+            completed_architecture = True
+
+        if not arch_name in chimi.core.CharmDefinition.Architectures:
+            # No such name even exists, either as a base architecture *or* a
+            # build architecture.  Complain at the user.
+            qualifier = None
+            if chose_architecture:
+                qualifier = 'Auto-selected'
+            elif completed_architecture:
+                qualifier = 'Auto-completed'
+            raise InvalidArchitectureError(arch_name, qualifier)
+        else:
+            arch = arch_name
+
+        available_arch_options = chimi.core.CharmDefinition.Architectures[arch_name].all_options
+        available_configure_options = package.definition.get_configure_options(package)
+
+        if isinstance(opts, basestring):
+            opts = [opts]
+        # The 'options' option to `build` takes a comma-separated list of Charm++
+        # "build options" (i.e. optional component names), `configure' --enable-*
+        # options ("features"), and --with-* options ("settings").
+        #
+        # Separate them.
+        negate_components = []
+        negate_features = []
+        negate_settings = []
+        components = []
+        features = {}
+        settings = {}
+
+        options_ary = []
+        for elt in opts:
+            options_ary.extend(filter(lambda x: len(x) > 0, elt.split(',')))
+        for opt in options_ary:
+            name, value = opt, True
+
+            if '=' in opt:
+                name, value = opt.split('=', 1)
+
+            if opt[0] == '-':
+                assert(not '=' in opt)
+                name = opt[1:]
+                value = False
+
+            if name in available_arch_options:
+                assert(not name in available_configure_options or
+                       available_configure_options[name].kind == 'with')
+                if value is False:
+                    negate_components.append(name)
+                else:
+                    components.append(name)
+            elif name in available_configure_options:
+                co = available_configure_options[name]
+                if co.kind == 'enable':
+                    if value is False and co.default == False:
+                        negate_features.append(name)
+                    else:
+                        features[name] = value
+                else:
+                    assert(co.kind == 'with')
+                    if value is False and co.default == False:
+                        negate_settings.append(name)
+                    else:
+                        settings[name] = value
+            elif not ignore_unknown_options:
+                raise InvalidBuildOptionError(package, name, opt)
+        kwargs={'package': package,
+                'negations': (negate_components, negate_features, negate_settings),
+                'source_opts': opts}
+
+        if branch:
+            kwargs['branch'] = branch
+
+        # Load the host-data file, and if it exists use it to construct the build
+        # configuration.
+        hi = chimi.config.HostConfig.load()
+
+        if hi != None:
+            return chimi.build.BuildConfig(hi.build,
+                                           arch, components, features, settings,
+                                           extras, **kwargs)
+        else:
+            return chimi.build.BuildConfig(arch, components, features, settings,
+                                           extras, **kwargs)
+
+
+
     def __init__(self, *args, **kwargs):
         """
         Initialize a new build configuration.
@@ -172,12 +350,13 @@ class BuildConfig(object):
 
         if len(args) > 0 and isinstance(args[0], chimi.config.HostBuildConfig):
             self.host_build_config = args.pop(0)
-            self.__init__(*args)
-            self.host_build_config.apply(self)
+            self.__init__(*args, **kwargs)
+            negations = kwargs['negations'] if 'negations' in kwargs else ([], [], [])
+            self.host_build_config.apply(self, negations)
         else:
             arch=chimi.config.get_architecture()
             components = []
-            features = []
+            features = {}
             settings = {}
             extras=[]
             branch=None
@@ -187,7 +366,7 @@ class BuildConfig(object):
             if len(args) > 0:
                 components = args.pop(0)
             if len(args) > 0:
-                components = args.pop(0)
+                features = args.pop(0)
 
             if len(args) > 0:
                 settings = args.pop(0)
@@ -202,41 +381,56 @@ class BuildConfig(object):
             else:
                 self.branch = None
 
-            if isinstance(arch, str):
+            if 'source_opts' in kwargs:
+                self.source_opts = kwargs['source_opts']
+
+            if 'package' in kwargs:
+                self.package = kwargs['package']
+                if not self.branch:
+                    self.branch = self.package.branch
+
+            if isinstance(arch, str) or isinstance(arch, chimi.core.CharmArchitecture):
                 self.architecture = arch
-                self.options = options if options else []
+                self.components = components if components else []
+                self.features = features if features else {}
                 self.settings = settings if settings else {}
                 self.extras = extras if extras else []
-                if 'cuda' in self.options:
+                if 'cuda' in self.components:
                     cuda_dir = chimi.core.get_cuda_dir()
                     if cuda_dir != None:
                         self.settings['cuda'] = cuda_dir
             else:
                 self.architecture = chimi.config.get_architecture()
-                self.options = []
+                self.components = []
+                self.features = []
                 self.settings = {}
                 self.extras = []
 
-        self.options.sort()
+        self.components.sort()
         self.extras.sort()
 
     def __str__(self):
         brstr = ''
         if self.branch:
-            brstr = ' branch=%s'
-        return '<%s:%s arch=%s options=%s settings=%s extras=%s>' % \
-            (self.__class__.__name__, brstr, self.architecture, self.options, self.settings,
-             self.extras)
+            brstr = ' branch=%s'%self.branch
+        return '<%s:%s arch=%s components=%s features=%s settings=%s extras=%s%s>' % \
+            (self.__class__.__name__, self.package.definition.name, self.architecture,
+             self.components, self.features, self.settings,
+             self.extras, brstr)
 
     def __eq__(self, other):
-        if not isinstance(other, BuildConfig):
+        if id(self) == id(other):
+            return True
+        elif not isinstance(other, BuildConfig):
             return False
         else:
             return self.architecture == other.architecture and \
-                self.options == other.options and \
+                self.components == other.components and \
+                self.features == other.features and \
                 self.settings == other.settings and \
-                self.extras == other.extras
-
+                self.extras == other.extras and \
+                self.branch == other.branch and \
+                self.package.definition.name == other.package.definition.name
 
 class Build(object):
     """Information about a build of a particular Package instance"""

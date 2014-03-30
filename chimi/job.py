@@ -169,7 +169,10 @@ def make_launch_config(build, host_config, architectures):
     lc = copy.copy(host_config.jobs.launch)
     option_db = yaml.load(pkg_resources.resource_string(__name__, 'data/option.yaml'))
     arch_db = yaml.load(pkg_resources.resource_string(__name__, 'data/architecture.yaml'))
-    for option in build.config.options:
+    opts = set(build.config.components)
+    opts.update(filter(lambda x: build.config.features[x], build.config.features.keys()))
+
+    for option in opts:
         if option in option_db:
             apply_tree(lc, option_db[option],
                        ('jobs', 'launch'))
@@ -283,7 +286,7 @@ def build_changa_invocation(opts, job_description, build,
 
     # Find the architectures -- actual and base -- of the build.
     if not len(chimi.core.CharmDefinition.Architectures) > 0:
-        chimi.core.CharmDefinition.load_architectures(package_set.packages['charm'].directory)
+        chimi.core.CharmDefinition.load_architectures(package_set.packages['charm'])
     arch = chimi.core.CharmDefinition.Architectures[build.config.architecture]
     base_arch = arch
     while base_arch.parent and base_arch.parent.name != 'common':
@@ -319,7 +322,7 @@ def build_changa_invocation(opts, job_description, build,
     local_net = \
         local_run and \
         base_arch.name == 'net' and \
-        not 'ibverbs' in build.config.options
+        not 'ibverbs' in build.config.components
 
     # If we're using more than one CPU -- or running locally on a `net' build
     # -- we need to launch with charmrun.
@@ -331,7 +334,7 @@ def build_changa_invocation(opts, job_description, build,
         if job_description.attribute_exists(saga.job.TOTAL_CPU_COUNT):
             out.append('+p%d'%job_description.total_cpu_count)
 
-    if local_run and not 'ibverbs' in build.config.options:
+    if local_run and not 'ibverbs' in build.config.components:
         lc.mpiexec = False
         lc.remote_shell = None
 

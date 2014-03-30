@@ -326,131 +326,29 @@ def helpfn(opts, *args, **kwargs):
             helpfn(opts, io, command_list=cmd.subcommands)
 
 
-class InvalidArchitectureError(ValueError):
-    def __init__(self, archname, qualifier=None):
-        self.architecture = archname
-        self.qualifier = qualifier
-    @property
-    def message(self):
-        return '%s%s`%s\' is not a valid Charm++ build architecture.' % \
-            (self.qualifier if self.qualifier else '',
-             ' ' if self.qualifier else '',
-             self.architecture)
-
-def make_build_config(config, force=False,
-                      package_set=None):
-    chose_architecture = False
-    if not 'arch' in config:
-        config['arch'] = chimi.config.get_architecture()
-        chose_architecture = True
-
-    completed_architecture = False
-    if package_set:
-        # Load architecture definitions if not already loaded.
-        if not len(CharmDefinition.Architectures) > 0:
-            CharmDefinition.load_architectures(package_set.packages['charm'].directory)
-
-        if config['arch'] in chimi.core.CharmDefinition.Architectures and\
-                chimi.core.CharmDefinition.Architectures[config['arch']].is_base:
-                # Shorthand (base arch) name given.  Fill it in for the user.
-                config['arch'] = chimi.config.get_architecture(config['arch'])
-                completed_architecture = True
-
-        if not config['arch'] in chimi.core.CharmDefinition.Architectures:
-            # No such name even exists, either as a base architecture *or* a
-            # build architecture.  Complain at the user.
-            qualifier = None
-            if chose_architecture:
-                qualifier = 'Auto-selected'
-            elif completed_architecture:
-                qualifier = 'Auto-completed'
-            raise InvalidArchitectureError(config['arch'], qualifier)
-
-    if not 'settings' in config:
-        config['settings'] = {}
-
-    # Process "extra" build arguments
-    extras=[]
-    if 'I' in config:
-        for _dir in config['I']:
-            if (not force) and not os.path.exists(_dir):
-                raise ValueError("\n\nSpecified include path \"%s\" does "%_dir +
-                                 "not exist.  If you\'re sure this is the\n"
-                                 "right argument, use the `--force\' option.")
-        extras.extend([ '-I%s' % _dir for _dir in config['I']])
-        del config['I']
-
-    if 'L' in config:
-        for _dir in config['L']:
-            if (not force) and not os.path.exists(_dir):
-                raise ValueError("\n\nSpecified library path \"%s\" does "%_dir +
-                                 "not exist.  If you\'re sure this is the\n"
-                                 "right argument, use the `--force\' option.")
-
-        extras.extend(['-L%s' % _dir for _dir in config['L']])
-        del config['L']
-
-    config['extras'] = extras
-
-    # The 'options' option to `build` takes a comma-separated list of Charm++
-    # "build options" (i.e. optional component names) and value assignments
-    # ("settings").
-    #
-    # Separate them.
-    negate_options=[]
-    if 'options' in config:
-        options_ary = []
-        for elt in config['options']:
-            options_ary.extend(elt.split(','))
-        config['options'] = []
-        for opt in options_ary:
-            if '=' in opt:
-                key, value = opt.split('=', 2)
-                config['settings'][key] = value
-            else:
-                if opt[0] == '-':
-                    negate_options.append(opt[1:])
-                else:
-                    config['options'].append(opt)
-    else:
-        config['options'] = []
-
-    kwargs={}
-    if 'branch' in config:
-        kwargs['branch'] = config['branch']
-
-    # Make the config into an actual build configuration.
-    config = chimi.build.BuildConfig(config['arch'], config['options'], config['settings'], config['extras'],
-                                    **kwargs)
-
-    # Load additional build settings from the host-data file.
-    hi = chimi.HostConfig.load()
-    if hi != None:
-        hi.build.apply(config, negated_options=negate_options)
-    else:
-        sys.stderr.write("WARNING: no host configuration found; using default settings.\n")
-
-    # Remove invalid options
-    if package_set:
-        arch = CharmDefinition.Architectures[config.architecture]
-        invalid_options = list(set(config.options).difference(set(arch.all_options)))
-
-        if len(invalid_options) > 0:
-            for opt in invalid_options:
-                sys.stderr.write('\033[1;31mERROR:\033[0m Option `%s\' is invalid for architecture `%s\'\n' % \
-                                     (opt, config.architecture))
-            config.options = list(set(config.options).intersection(set(arch.options)))
-            config.options.sort()
-
-    return(config)
-
-
 def build(config, which=None, *args):
     which_args = ['all', 'changa', 'charm']
 
     args = list(args)
     if '--' in args:
         del args[args.index('--')]
+
+    extras = args
+    if len(extras) > 0:
+        incdirs = [s[2:] for s in filter(lambda x: x.startswith('-I'), extras)]
+        linkdirs = [s[2:] for s in filter(lambda x: x.startswith('-L'), extras)]
+
+        for _dir in incdirs:
+            if (not force) and not os.path.exists(_dir):
+                raise ValueError("\n\nSpecified include path \"%s\" does "%_dir +
+                                 "not exist.  If you\'re sure this is the\n"
+                                 "right argument, use the `--force\' option.")
+        for _dir in linkdirs:
+            if (not force) and not os.path.exists(_dir):
+                raise ValueError("\n\nSpecified library path \"%s\" does "%_dir +
+                                 "not exist.  If you\'re sure this is the\n"
+                                 "right argument, use the `--force\' option.")
+
 
     ps = find_current_package_set()
     changa = ps.packages['changa']
@@ -476,9 +374,9 @@ def build(config, which=None, *args):
         purge = config['purge']
         del config['purge']
 
-    config = make_build_config(config, force=force, package_set=ps)
-    config.options.sort()
-    config.extras.extend(args)
+    arch = config['arch'] if 'arch' in config else None
+    opts = config['options'] if 'options' in config else []
+    branch = config['branch'] if 'branch' in config else None
 
     if isinstance(which, type(None)):
         if purge:
@@ -498,6 +396,8 @@ def build(config, which=None, *args):
 
     for item in which:
         package = ps.packages[item]
+        config = chimi.build.BuildConfig.create(package, arch=arch, opts=opts,
+                                                extras=extras, branch=branch)
         if purge == 'all':
             package.purge_builds()
         elif isinstance(purge,bool) and purge:
@@ -586,9 +486,14 @@ def list_items(opts, directory=None):
             sys.stdout.write("    architecture: %s\n" % build.config.architecture)
 
             options_desc = 'none'
-            if len(build.config.options) > 0:
-                options_desc = ' '.join(build.config.options)
-            sys.stdout.write("    options: %s\n" % options_desc)
+            if len(build.config.components) > 0:
+                components_desc = ' '.join(build.config.components)
+            sys.stdout.write("    components: %s\n" % components_desc)
+
+            if len(build.config.features) > 0:
+                sys.stdout.write("    features:\n")
+                for sname in build.config.features:
+                    sys.stdout.write("      %s=%s\n" % (sname, build.config.features[sname]))
 
             if len(build.config.settings) > 0:
                 sys.stdout.write("    settings:\n")
@@ -609,8 +514,8 @@ def list_items(opts, directory=None):
 def show_architectures(opts, *args):
     ps = chimi.command.find_current_package_set()
 
-    if not len(CharmDefinition.Architectures) > 0:
-        CharmDefinition.load_architectures(ps.packages['charm'].directory)
+    if not len(chimi.core.CharmDefinition.Architectures) > 0:
+        chimi.core.CharmDefinition.load_architectures(ps.packages['charm'])
 
     sym_pfx = ''
     unique = False
@@ -689,9 +594,9 @@ def show_builds(opts, *args):
 
     if 'arch' in opts:
         archname = opts['arch']
-        if not len(CharmDefinition.Architectures) > 0:
-            CharmDefinition.load_architectures(ps.packages['charm'])
-        if not archname in CharmDefinition.Architectures:
+        if not len(chimi.core.CharmDefinition.Architectures) > 0:
+            chimi.core.CharmDefinition.load_architectures(ps.packages['charm'])
+        if not archname in chimi.core.CharmDefinition.Architectures:
             raise InvalidArchitectureError(archname)
         else:
             def gather_names(arch):
@@ -702,7 +607,7 @@ def show_builds(opts, *args):
                                 for name in gather_names(ch)
                                 ])
                 return out
-            arch_names = gather_names(CharmDefinition.Architectures[archname])
+            arch_names = gather_names(chimi.core.CharmDefinition.Architectures[archname])
             _builds = filter(lambda x: x.config.architecture in arch_names, _builds)
 
     if len(_builds) > 0:
@@ -712,7 +617,7 @@ def show_builds(opts, *args):
                 if use_color \
                 else _build.status.name
             t.append((_build.name, _build.uuid, _build.config.branch,
-                      _build.version, ' '.join(_build.config.options), status))
+                      _build.version, ' '.join(_build.config.components), status))
 
         sys.stderr.write(str(time.clock() - sys.modules['__main__'].chimi_process_start_clock) + 's\n')
         print(t.render(color=use_color))

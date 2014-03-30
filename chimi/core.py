@@ -26,6 +26,7 @@ import sys
 import uuid
 import time
 import copy
+import shlex
 import shutil
 import datetime
 import textwrap
@@ -87,7 +88,8 @@ def get_cuda_dir():
 def build_configure_flags(definition, config):
     """Construct `configure` flags from the given build config."""
     bool_mapping = { 'yes': True, 'on': True,
-                     'no': False, 'off': False }
+                     'no': False, 'off': False,
+                     True: True, False: False }
     out = []
 
     for name in config.settings:
@@ -101,6 +103,15 @@ def build_configure_flags(definition, config):
             out.append('--%s-%s' % (wo, name))
         else:
             out.append('--with-%s=%s' % (name, value))
+    for name in config.features:
+        value = config.features[name]
+        assert(value in  bool_mapping)
+        value = bool_mapping[value]
+        if value:
+            ed = 'enable'
+        else:
+            ed = 'disable'
+        out.append('--%s-%s' % (ed, name))
 
     if definition.name == 'ChaNGa' and len(config.extras) > 0:
         ldflags=[]
@@ -120,20 +131,65 @@ def build_configure_flags(definition, config):
 class PackageDefinition(object):
     """Information about how to fetch and build a particular package."""
 
+    ConfigureOption = chimi.util.create_struct(__name__, 'ConfigureOption',
+                                               kind='enable',
+                                               name=None,
+                                               default=None)
     name = None
     repository = None
 
     @classmethod
+    def get_configure_path(self, instance):
+        """Get the path to the instance's `configure' script, if it has one."""
+        pass
+
+    @classmethod
+    def get_configure_options(self, instance):
+        """
+        Get the package and feature options available for a package instance's
+        `configure' script.
+
+        return: dict
 
         """
+        chimi.transient.push('(Loading %s configure options ... ' % self.name)
 
+        script = self.get_configure_path(instance)
+        script_help = subprocess.check_output([script, '--help'])
+        lre = re.compile(r'^\s*--(enable|disable|with|without)-([^\s\[=]+)')
+        lines = filter(lambda x: lre.match(x), script_help.split('\n'))
 
-        """
+        o = {}
+
+        for l in lines:
+            m = lre.match(l)
+            kind, name = m.groups()
+
+            opt = None
+            if kind == 'enable':
+                opt = self.ConfigureOption(kind='enable', name=name, default=False)
+            elif kind == 'disable':
+                opt = self.ConfigureOption(kind='enable', name=name, default=True)
+            elif kind == 'with':
+                opt = self.ConfigureOption(kind='with', name=name, default=False)
+            elif kind == 'without':
+                opt = self.ConfigureOption(kind='with', name=name, default=True)
             else:
+                # this should never happen -- the regular expression ensures
+                # that one of the above conditions is true.
+                os.abort()
 
 
+            if (opt.kind == 'enable' and opt.name == 'FEATURE') or \
+                    (opt.kind == 'with' and opt.name == 'PACKAGE'):
+                # Skip the example options.
+                continue
+            elif name in o:
+                raise ValueError('%s: `configure\' option name conflict: %s'%(self.name, name))
             else:
-
+                o[name] = opt
+        chimi.transient.pop(')')
+        return o
 
     @classmethod
     def get_build_name(self, build):
@@ -180,6 +236,10 @@ class ChaNGaDefinition(PackageDefinition):
     repository = chimi.settings.DEFAULT_REPOSITORIES['changa']
 
     @classmethod
+    def get_configure_path(self, instance):
+        return os.path.join(instance.directory, 'configure')
+
+    @classmethod
     def get_build_name(self, build=None, charm_name=None, package=None):
         if build and not charm_name:
             charm_name = CharmDefinition.get_build_name(build)
@@ -215,16 +275,17 @@ class ChaNGaDefinition(PackageDefinition):
 
         # Find a matching Charm++ build.
         charm = package.package_set['charm']
-        charm_build = charm.find_build(config, require_matching_branch=False)
+        charm_config = chimi.build.BuildConfig.create(charm, opts=config.source_opts,
+                                                      extras=config.extras,
+                                                      branch=config.branch if config.branch in charm.branches else charm.branch,
+                                                      ignore_unknown_options=True)
+        charm_build = charm.find_build(charm_config)
 
         if charm_build == None:
             sys.stderr.write("No matching Charm++ build found -- building now.\n")
-
-            charm_config = copy.copy(config)
-            if not charm_config.branch in charm.branches:
-                charm_config.branch = charm.branch
-
+            assert(charm_config.branch in charm.branches)
             charm_build = charm.build(charm_config)
+
             if charm_build.status.failure:
                 sys.stderr.write("\033[1;31mCharm build failed:\033[0m ChaNGa build aborted.\n")
                 return None
@@ -423,16 +484,32 @@ class CharmDefinition(PackageDefinition):
     COMPILERS_REGEXP = re.compile(r'^cc-([^.]+).h$')
     OPTIONS_REGEXP = re.compile(r'^conv-mach-([^.]+).h$')
 
+    ExistingBuild = chimi.util.create_struct(__name__, 'ExistingBuild',
+                                             directory=None,
+                                             architecture=None,
+                                             components=None,
+                                             features=None,
+                                             settings=None,
+                                             extras=None,
+                                             branch=None)
+
+
+    @classmethod
+    def get_configure_path(self, instance):
+        return os.path.join(instance.directory, 'src', 'scripts', 'configure')
+
 
     @classmethod
     def get_build_name(self, build):
         config = build.config
         if isinstance(config,tuple):
             config = config[0]
-        opts = [config.architecture]
-        options = list(config.options)
-        options.sort()
-        opts.extend(options)
+        opts = [config.architecture.name \
+                    if isinstance(config.architecture, CharmArchitecture) \
+                    else config.architecture]
+        components = list(config.components)
+        components.sort()
+        opts.extend(components)
         return '-'.join(opts)
 
     @classmethod
@@ -483,7 +560,7 @@ class CharmDefinition(PackageDefinition):
         return (options, compilers, fortran_compilers)
 
     @classmethod
-    def load_architectures(self, directory):
+    def load_architectures(self, package):
         """
         Initialize CharmDefinition.Architectures.
 
@@ -492,7 +569,7 @@ class CharmDefinition(PackageDefinition):
         package tree.
 
         """
-
+        directory = package.directory
         # We *could* make a native Python version of this shell command, but
         # since we're trying to recreate the same values that Charm++'s "build"
         # script comes up with, it's probably better to just copy the command
@@ -519,6 +596,9 @@ class CharmDefinition(PackageDefinition):
                         CharmArchitecture(common, base_name,
                                           *self.get_arch_options_and_compilers(directory, base_name),
                                           is_base=True)
+                else:
+                    base = CharmDefinition.Architectures[base_name]
+                    base.is_base = True
 
                 parent = CharmDefinition.Architectures[base_name]
 
@@ -529,33 +609,101 @@ class CharmDefinition(PackageDefinition):
                 parent.children.append(arch)
 
     @classmethod
-    def find_existing_builds(self, package, build_dir=None):
+    def find_existing_build_data(self, package, build_dir=None):
         if build_dir == None:
             build_dir = package.directory
         if len(CharmDefinition.Architectures) == 0:
             if package.definition == self:
-                self.load_architectures(package.directory)
+                self.load_architectures(package)
             else:
                 raise RuntimeError('Cannot load architectures from non-Charm++ build tree!')
         arches = list(CharmDefinition.Architectures.keys())
         arches.sort(key=lambda x: len(x), reverse=True)
 
         # Find all entries under `build_dir` that match available architectures.
-        arches_regex = re.compile('^(' + ('|'.join(arches)) + ')(?:-([a-z][-a-z]*))?$')
-        build_dirs = filter(lambda x: arches_regex.match(x) and os.path.isdir(os.path.join(build_dir, x)),
+        name_re = re.compile('^(' + ('|'.join(arches)) + r')(?:-([a-z][-a-z]*))?(?:\+([a-z][-a-z0-9_/]*))?')
+        build_dirs = filter(lambda x: name_re.match(x) and os.path.isdir(os.path.join(build_dir, x)),
                             os.listdir(build_dir))
-        builds = []
+        out = []
         # Extract build architecture and options from build directory names
+        config_opts_re = re.compile(r'^  with options \\"(.+)\\"$')
+        feature_re = re.compile(r'^--(en|dis)able-(.+)$')
+        setting_re = re.compile(r'^--with(out)?-([^=]+)(?:=(.+))?$')
         for dirname in build_dirs:
-            arch = arches_regex.sub(r'\1', dirname)
+            m = name_re.match(dirname)
+            arch = m.group(1)
             opts = []
+            components = []
+            features = {}
+            settings = {}
+            extras = []
+            branch = None
+
             try:
-                opts = arches_regex.sub(r'\2', dirname).split('-')
+                components = m.group(2).split('-')
             except:
                 pass
-            builds.append(Build(package, BuildConfig(arch, opts, {}, []),
-                                initial_status=BuildStatus.PreexistingBuild))
+            try:
+                branch = m.group(3)
+            except:
+                pass
 
+            # Load the autoconf `config_opts.sh' file and reconstruct
+            # build-config settings from its contents.
+            config_opts_file = os.path.join(build_dir, dirname, 'tmp', 'config.status')
+            if not os.path.isfile(config_opts_file):
+                config_opts_file = os.path.join(build_dir, dirname, 'config.status')
+
+            if os.path.isfile(config_opts_file):
+                config_opts_contents = file(config_opts_file).read().strip()
+                lines = config_opts_contents.split('\n')
+                matches = filter(lambda x: x, [config_opts_re2.match(l) for l in lines])
+                try:
+                    m = matches[0]
+                except IndexError:
+                    m = None
+
+                if m:
+                    config_opts = shlex.split(m.group(1))
+                    for opt in config_opts:
+                        if opt.startswith('CHARMC='):
+                            continue
+                        m = feature_re.match(opt)
+                        if m:
+                            how, name = m.groups()
+                            if how == 'en':
+                                features[name] = True
+                            else:
+                                features[name] = False
+                            continue
+
+                        m = setting_re.match(opt)
+                        if m:
+                            without, name, value = m.groups()
+                            if without == 'out' or value == 'no':
+                                settings[name] = False
+                            else:
+                                settings[name] = value if value else True
+                            continue
+                        extras.append(opt)
+            out.append(CharmDefinition.ExistingBuild(directory=dirname,
+                                                     architecture=arch,
+                                                     components=components,
+                                                     features=features,
+                                                     settings=settings,
+                                                     extras=extras,
+                                                     branch=branch))
+        return out
+
+    @classmethod
+    def find_existing_builds(self, package, build_dir=None):
+        data = self.find_existing_build_data(package, build_dir)
+        builds = []
+        for eb in data:
+            builds.append(Build(package, BuildConfig(eb.architecture, eb.components, eb.features,
+                                                     eb.settings, eb.extras, branch=eb.branch,
+                                                     package=package),
+                                initial_status=BuildStatus.PreexistingBuild))
         return builds
 
     @classmethod
@@ -564,7 +712,7 @@ class CharmDefinition(PackageDefinition):
 
         assert(config.branch != None)
         if len(CharmDefinition.Architectures) == 0:
-            self.load_architectures(srcdir)
+            self.load_architectures(package)
 
         opts = []
         _build = None
@@ -583,8 +731,8 @@ class CharmDefinition(PackageDefinition):
             build_args = ['gmake', 'basics', 'ChaNGa']
         else:
             build_cwd = srcdir
-            build_args = ['./build', 'ChaNGa', config.architecture]
-            build_args.extend(config.options)
+            build_args = ['./build', 'ChaNGa', config.architecture.name]
+            build_args.extend(config.components)
             build_args.extend(build_configure_flags(self, config))
             build_args.extend(config.extras)
 
@@ -755,16 +903,11 @@ class Package(object):
             raise ValueError('Invalid argument type `%s\' to `find_build`'%type(config))
         return filter(lambda x: x.config == config, self.builds)
 
-    def find_build(self, config, require_matching_branch=False):
+    def find_build(self, config):
         """Find a build matching `config` for this package instance."""
         matches = self.find_builds(config)
-        bmatches = filter(lambda x: x.config.branch == config.branch, matches)
 
-        if require_matching_branch:
-            return bmatches[0] if len(bmatches) > 0 else None
-        elif len(bmatches) > 0:
-            return bmatches[0]
-        elif len(matches) > 0:
+        if len(matches) > 0:
             return matches[0]
         else:
             return None
