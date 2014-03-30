@@ -662,7 +662,7 @@ class CharmDefinition(PackageDefinition):
             if os.path.isfile(config_opts_file):
                 config_opts_contents = file(config_opts_file).read().strip()
                 lines = config_opts_contents.split('\n')
-                matches = filter(lambda x: x, [config_opts_re2.match(l) for l in lines])
+                matches = filter(lambda x: x, [config_opts_re.match(l) for l in lines])
                 try:
                     m = matches[0]
                 except IndexError:
