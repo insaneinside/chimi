@@ -26,6 +26,14 @@ __author__    = 'Collin J. Sutton'
 __copyright__ = 'Copyright (C) 2014 Collin J. Sutton'
 __license__   = 'GPLv2'
 
+
+class Error(Exception):
+    """
+    Base for all Chimi-defined exception types.
+
+    """
+    pass
+
 from chimi.option import Option
 from chimi.option import OptionParser
 from chimi.core import *

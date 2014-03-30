@@ -39,7 +39,7 @@ basename = os.path.basename(sys.argv[0])
 __all__ = ['CommandError', 'CommandUsageError', 'SubcommandError', 'Command',
            'find_current_package_set', 'main']
 
-class CommandError(Exception):
+class CommandError(chimi.Error):
     pass
 
 class CommandUsageError(CommandError,ValueError):
@@ -68,17 +68,23 @@ class Command(object):
         self.hidden = name[0] == '*'
         self.required_arg_count = 0
         self.subcommands=subcommands
-
         self.parent = None
+
         if subcommands != None:
+            self.subcommand_dict = {}
             for cmd in self.subcommands:
                 cmd.parent = self
+                self.subcommand_dict[cmd.name] = cmd
         else:
             self.subcommands = []
+            self.subcommand_dict = {}
 
         for arg in self.arguments_usage:
             if arg[0] != '[':
                 self.required_arg_count += 1
+
+    def __repr__(self):
+        return '<Command:%s>' % ' '.join(self.full_name_list)
 
     @property
     def brief(self):
@@ -105,7 +111,6 @@ class Command(object):
         """Usage string for this command"""
 
         parts = self.full_name_list
-        parts.insert(0, chimi.command.basename)
 
         if len(self.options) > 0:
             parts.append('[OPTION]...')
@@ -127,12 +132,20 @@ class Command(object):
             "\n".join([chimi.option.OptionParser.format_help(self.options,
                                                              self.usage,
                                                              self.help_brief),
-                       self.help_detail + "\n" if self.help_detail else ''])
+                       chimi.util.wrap_text(self.help_detail, respect_newlines=False) +
+                       "\n\n" if self.help_detail else ''])
 
     @property
     def num_args(self):
         """Maximum number of arguments accepted"""
         return len(self.arguments_usage)
+
+    def find_subcommand(self, name):
+        """Find a subcommand by name."""
+        if len(self.subcommands) == 0 or not name in self.subcommand_dict:
+            raise SubcommandError(self, name)
+        else:
+            return self.subcommand_dict[name]
 
     def call(self, opts={}, args=[], kwargs={}):
         """
@@ -149,28 +162,24 @@ class Command(object):
 
         """
         opts_out = dict(opts)
-        subcommand_dict = {}
-        for cmd in self.subcommands:
-            subcommand_dict[cmd.name] = cmd
-
         options = []
         if len(self.options) > 0:
-            options.extend(chimi.OptionParser.flatten(self.options))
+            options.extend(OptionParser.flatten(self.options))
 
 
         # Make "-h" work for printing the help string for any command.
         # Anything after this option will be ignored -- even subcommands (and
         # "-h" flags that follow them).
         def impromptu_help(self):
-            sys.stdout.write(self.help)
+            helpfn({}, cmd=self)
             exit(0)
-        options.append(chimi.Option('h', 'help', 'Show help for the %s command' % self.name)\
-                        .handle(lambda: impromptu_help(self)))
+        options.append(Option('h', 'help', 'Show help for the %s command' % self.name)\
+                        .handle(lambda *x: impromptu_help(self)))
 
         # Parse options for this command.
-        stop_set = subcommand_dict.keys()
+        stop_set = self.subcommand_dict.keys()
         try:
-            opts_out.update(chimi.OptionParser.handle_options(options, args, stop_set))
+            opts_out.update(OptionParser.handle_options(options, args, stop_set))
         except Exception as err:
             sys.stderr.write('%s: %s' % (self.name, err.message))
             return 3;
@@ -184,8 +193,8 @@ class Command(object):
             # Secondary-command invocation.
             if not len(args) > 0:
                 raise CommandUsageError(self)
-            elif args[0] in subcommand_dict:
-                cmd = subcommand_dict[args[0]]
+            else:
+                cmd = self.find_subcommand(args[0])
                 del args[0]
 
                 if len(args) < cmd.required_arg_count:
@@ -194,16 +203,22 @@ class Command(object):
                     # Invoke the parent command's handler to do e.g. common
                     # initialization for subcommands, and then invoke the
                     # subcommand using the results of that call.
-                    opts_out, _kwargs = self.callback(opts_out, *args)
-                    return cmd.call(opts=opts_out, args=args, kwargs=_kwargs)
+                    common_result = self.callback(opts_out, *args)
+                    if common_result is None:
+                        opts_out, args_out, _kwargs = opts_out, args, {}
+                    else:
+                        opts_out, args_out, _kwargs = common_result
+                        if _kwargs is None:
+                            if isinstance(args_out, dict):
+                                _kwargs = args_out
+                            args_out = args
+
+                    return cmd.call(opts=opts_out, args=args_out, kwargs=_kwargs)
                 else:
                     # No handler for parent command, so invoke the subcommand
                     # "normally" (we still provide the additional options from
                     # the parent command).
                     return cmd.call(opts=opts_out, args=args)
-            else:
-                raise SubcommandError(self, args[0])
-
 
 def load_platform_resources():
     import chimi.lmod
@@ -266,10 +281,9 @@ def helpfn(opts, *args, **kwargs):
         io = args[-1]
         del args[-1]
 
-    command_list=kwargs['command_list']
-    assert(isinstance(command_list, list))
+    command_list=kwargs['command_list'] if 'command_list' in kwargs else COMMAND_LIST
 
-    if len(args) == 0:
+    if len(args) == 0 and not 'cmd' in kwargs and 'command_list' in kwargs:
         io.write("Valid %scommands are:\n"%('sub' if command_list != COMMAND_LIST else ''))
         cmds_usage = {}
 
@@ -296,22 +310,17 @@ def helpfn(opts, *args, **kwargs):
             io.write("\nUse `%s help COMMAND' for detailed information on a command.\n" % basename)
             io.write("If no command is given, `%s' does nothing.\n" % basename)
         else:
-            io.write("\nUse `%s help %s COMMAND' for detailed information on a command.\n" % (basename, ' '.join(command_list[0].parent.full_name_list)))
+            io.write("\nUse `%s help %s COMMAND' for detailed information on a command.\n" %
+                     (basename, ' '.join(command_list[0].parent.full_name_list[1:])))
 
     else:
-        command_list=kwargs['command_list']
-        commands = {}
-        for cmd in command_list:
-            commands[cmd.name] = cmd
-        cmd = commands[args.pop(0)]
-        while len(args) > 0 and len(cmd.subcommands) > 0:
-            command_list = cmd.subcommands
-            commands = {}
-            commands = {}
-            for cmd in command_list:
-                commands[cmd.name] = cmd
-            cmd = commands[args.pop(0)]
-
+        cmd = None
+        if 'cmd' in kwargs:
+            cmd = kwargs['cmd']
+        else:
+            cmd = chimi_command
+            while len(args) > 0:# and len(cmd.subcommands) > 0:
+                cmd = cmd.find_subcommand(args.pop(0))
         io.write(cmd.help)
         if isinstance(cmd.subcommands, list) and len(cmd.subcommands) > 0:
             helpfn(opts, io, command_list=cmd.subcommands)
@@ -722,7 +731,7 @@ COMMAND_LIST = [
             [],
             "If COMMAND is given, show help for that command.  Otherwise, "+
             "show a\nlist of available commands.",
-            lambda x, *y: helpfn(x, *y, command_list=COMMAND_LIST)),
+            lambda x, *y, **kwargs: helpfn(x, *y, **kwargs)),
     # Build.
     Command('build', ['[all|changa|charm]'], 'Build a package.',
             [('Configuration options',
@@ -867,55 +876,42 @@ The `--type' option accepts several values, which are explained here.
             ]),
     ]
 
-COMMAND_NAMES = [ cmd.name for cmd in COMMAND_LIST ]
-COMMANDS = {}
 
-PROGRAM_USAGE='%s [OPTION]... COMMAND [ARGUMENT]...' % basename
-PROGRAM_DESCRIPTION='Perform boring ChaNGa-related tasks.'
+def common(opts, *args):
+    chimi.settings.noact = opts['noact'] if 'noact' in opts else False
 
-for cmd in COMMAND_LIST:
-    COMMANDS[cmd.name] = cmd
-
-def show_help(io=sys.stderr, _exit=False, _exit_status=None):
-    OptionParser.show_help(OPTIONS, PROGRAM_USAGE, PROGRAM_DESCRIPTION, io)
-    io.write("\n")
-    helpfn(None, io, command_list=COMMAND_LIST)
-    if _exit:
-        exit(_exit_status)
-
-OPTIONS = [ Option('h', 'help', 'Show this help.').handle(lambda *x: show_help(sys.stdout, True, 0)),
-            Option('n', 'noact', 'Don\'t actually change anything or run any commands.').store(),
-            ]
-
+chimi_command = Command(basename, ['COMMAND', '[ARGUMENT]...'],
+                        'Perform boring ChaNGa-related tasks.',
+                        [Option('h', 'help', 'Show this help.').handle(lambda *x: show_help(sys.stdout, True, 0)),
+                         Option('n', 'noact', 'Don\'t actually change anything or run any commands.').store(),
+                         ],
+                        None,
+                        callback=common,
+                        subcommands=COMMAND_LIST)
 
 def main():
-    chimi.run_cwd = os.getcwd()
+    """
+    Chimi's primary entry point.
+
+    """
+
     load_platform_resources()
+    chimi.run_cwd = os.getcwd()
+
     args = sys.argv[1:]
-    opts_out = OptionParser.handle_options(OPTIONS, args, COMMAND_NAMES)
-
-    if 'noact' in opts_out:
-        chimi.settings.noact = opts_out['noact']
-
-    if len(args) == 0:
-        OptionParser.show_usage(PROGRAM_USAGE, sys.stderr)
-        return 1
-    elif not args[0] in COMMAND_NAMES:
-        raise NotImplementedError('No such command "%s"' % args[0])
-    elif len(args) > 1 and args[-1] == '-h':
-        return COMMANDS['help'].call(args=args[0:-1])
-    else:
-        try:
-            return COMMANDS[args[0]].call(args=args[1:])
-        except CommandError as err:
-            sys.stderr.write(err.message+"\n")
-            sys.stderr.write('Try `%s help %s\' for more information.\n'%\
-                                 (chimi.command.basename, ' '.join(err.command.full_name_list)))
-        except InvalidArchitectureError as err:
-            sys.stderr.write(err.message+"\n")
-            sys.stderr.write('Run `%s show arch -l\' for a list of valid architecture names.\n'%\
-                                 chimi.command.basename)
-        return 1
-
-if __name__ == "__main__":
-    exit(main())
+    try:
+        return chimi_command.call({}, args=args)
+    except CommandError as err:
+        sys.stderr.write(err.message+"\n")
+        sys.stderr.write('Try `%s help%s\' for more information.\n'%\
+                             (chimi_command.name,
+                              ' ' + ' '.join(err.command.full_name_list[1:]) \
+                                  if len(args) > 0 \
+                                  else ''))
+    except chimi.build.InvalidArchitectureError as err:
+        sys.stderr.write(err.message+"\n")
+        sys.stderr.write('Run `%s show arch -l\' for a list of valid architecture names.\n'%\
+                             chimi_command.name)
+    except chimi.Error as err:
+        sys.stderr.write(err.message+"\n")
+    return 1
