@@ -324,6 +324,14 @@ def build_changa_invocation(opts, job_description, build,
     if 'spmd_variation' in lc.__dict__:
         job_description.spmd_variation = lc.spmd_variation
 
+    # Ensure we've specified a total CPU count that the job manager likes.  If
+    # we haven't, round up to the next multiple-of value.
+    if 'total_cpu_count_multiple_of' in lc.__dict__ and\
+            total_cpu_count % lc.total_cpu_count_multiple_of != 0:
+        job_description.total_cpu_count = total_cpu_count \
+            - (total_cpu_count % lc.total_cpu_count_multiple_of) \
+            + lc.total_cpu_count_multiple_of
+
     node_count = int(math.ceil(float(total_cpu_count) / processes_per_host))
 
     local_run = node_count <= 1
@@ -343,7 +351,7 @@ def build_changa_invocation(opts, job_description, build,
         out = [charmrun_path]
 
         if job_description.attribute_exists(saga.job.TOTAL_CPU_COUNT):
-            out.append('+p%d'%job_description.total_cpu_count)
+            out.append('+p%d'% total_cpu_count)
 
     if local_run and not 'ibverbs' in build.config.components:
         lc.mpiexec = False
