@@ -827,10 +827,14 @@ class Package(object):
     @property
     def repository(self):
         """Git repository object for the package."""
-        if self._repository != None:
+        if not self._repository is None:
             return self._repository
         else:
-            self._repository = git.Repo(self.directory)
+            try:
+                self._repository = git.Repo(self.directory)
+            except:
+                self._repository = False
+
             return self._repository
 
     def fetch(self):
