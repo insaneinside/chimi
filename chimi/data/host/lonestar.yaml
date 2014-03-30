@@ -34,3 +34,6 @@ jobs:
   host: lonestar.tacc.utexas.edu
   launch:
     spmd-variation: 12way
+    # Specify that the host's job manager wants total-cpu-count to always be a
+    # multiple of this number.
+    total-cpu-count-multiple-of: 12
