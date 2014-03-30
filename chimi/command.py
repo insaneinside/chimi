@@ -551,7 +551,7 @@ def show_architectures(opts, *args):
 
 
         inh_str = ''
-        if arch.parent:
+        if arch.parent and not list_only:
             inh_str = ' (%s)' % arch.parent.name
         sys.stdout.write('\033[1;97m%s\033[0m%s' % (arch.name, inh_str))
 
