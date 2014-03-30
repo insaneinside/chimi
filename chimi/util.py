@@ -206,7 +206,7 @@ def relative_datetime_string_ish(time=False):
     if type(time) is int:
         diff = now - datetime.fromtimestamp(time)
     elif isinstance(time,datetime.datetime):
-        diff = now - time 
+        diff = now - time
     elif not time:
         diff = now - now
 
@@ -345,6 +345,7 @@ def isnumeric(x):
     except:
         return False
 
+
 class Table(object):
     """
     Utility for pretty-printing a text-based table.  Unlike the "texttable"
@@ -422,7 +423,7 @@ class Table(object):
                 # Split the difference
                 moi = column_widths.index(mow)
                 column_widths[moi] += slop/2
-                column_widths[mwi] += slop/2                
+                column_widths[mwi] += slop/2
             else:
                 column_widths[mwi] += slop
 
