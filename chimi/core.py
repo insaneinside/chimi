@@ -42,8 +42,6 @@ from chimi.build import Build
 from chimi.build import BuildStatus
 from chimi.build import BuildConfig
 
-git = None
-
 git = chimi.transient.OnDemandLoader(__name__, 'git')
 yaml = chimi.transient.OnDemandLoader(__name__, 'yaml' )
 
@@ -829,7 +827,6 @@ class Package(object):
     @property
     def repository(self):
         """Git repository object for the package."""
-        load_git()
         if self._repository != None:
             return self._repository
         else:
