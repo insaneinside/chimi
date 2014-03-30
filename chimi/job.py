@@ -298,8 +298,18 @@ def build_changa_invocation(opts, job_description, build,
     lc = make_launch_config(build, host_config, (arch, base_arch))
     out = []
 
-    charmrun_path = os.path.relpath(os.path.join(build.directory, 'charmrun'), job_description.working_directory)
-    changa_path = os.path.relpath(os.path.join(build.directory, 'ChaNGa'), job_description.working_directory)
+    # Find the shortest path to the ChaNGa and charmrun executables.
+    charmrun_path = os.path.join(build.directory, 'charmrun')
+    changa_path = os.path.join(build.directory, 'ChaNGa')
+
+    charmrun_relpath = os.path.relpath(charmrun_path, job_description.working_directory)
+    changa_relpath = os.path.relpath(changa_path, job_description.working_directory)
+
+    if len(charmrun_relpath) < len(charmrun_path):
+        charmrun_path = charmrun_relpath
+
+    if len(changa_relpath) < len(changa_path):
+        changa_path = changa_relpath
 
     # Determine run parameters.
     cpus_per_host = charm.cmi.num_cores()
