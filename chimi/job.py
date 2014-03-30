@@ -61,7 +61,7 @@ def load_saga():
         chimi.job.ADAPTORS=[]
 
         for name in chimi.job.ADAPTOR_DIRS:
-            for f in filter(lambda e: e[0] != '_' and re.match(r'^.*\.py$', e),
+            for f in filter(lambda e: e[0] != '_' and re.match(r'^.*job\.py$', e),
                            os.listdir(os.path.join(chimi.job.ADAPTORS_DIR, name))):
                 subname = re.sub('\.py$', '', f)
                 modname = '.'.join([name, subname])
