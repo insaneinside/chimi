@@ -407,6 +407,7 @@ class BuildConfig(object):
                 self.extras = []
 
         self.components.sort()
+        self.extras = list(set(self.extras))
         self.extras.sort()
 
     def __str__(self):
