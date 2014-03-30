@@ -582,9 +582,7 @@ def show_architectures(opts, *args):
             sys.stdout.write("\n")
 
 def show_builds(opts, *args):
-    t = chimi.util.Table(cols=('Name', 'UUID', 'Branch', 'Options', 'Status'),
-                         types=(basestring, uuid.UUID, basestring, basestring,
-                                basestring))
+    t = chimi.util.Table(cols=('Name', 'UUID', 'Branch', 'Version', 'Options', 'Status'))
     use_color = sys.stdout.isatty()
     ps = chimi.command.find_current_package_set()
 
