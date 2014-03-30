@@ -204,14 +204,16 @@ class Command(object):
                     # initialization for subcommands, and then invoke the
                     # subcommand using the results of that call.
                     common_result = self.callback(opts_out, *args)
+                    opts_out = opts_out
+                    args_out = args
+                    _kwargs = {}
                     if common_result is None:
                         opts_out, args_out, _kwargs = opts_out, args, {}
-                    else:
+                    elif len(common_result) == 3:
                         opts_out, args_out, _kwargs = common_result
-                        if _kwargs is None:
-                            if isinstance(args_out, dict):
-                                _kwargs = args_out
-                            args_out = args
+                    else:
+                        assert(len(common_result) == 2)
+                        opts_out, _kwargs = common_result
 
                     return cmd.call(opts=opts_out, args=args_out, kwargs=_kwargs)
                 else:
