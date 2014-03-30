@@ -59,7 +59,7 @@ class Command(object):
     def __init__(self, name, args, brief, options, detail,
                  callback=None,
                  subcommands=None):
-        self._name = name
+        self.name = name
         self.arguments_usage = args
         self.options = options
         self.help_brief = brief
@@ -79,10 +79,6 @@ class Command(object):
         for arg in self.arguments_usage:
             if arg[0] != '[':
                 self.required_arg_count += 1
-    @property
-    def name(self):
-        """Name of this command"""
-        return self._name
 
     @property
     def brief(self):
