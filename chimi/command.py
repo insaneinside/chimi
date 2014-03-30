@@ -713,7 +713,7 @@ is made to automatically determine the appropriate build architecture.
                     ],
                     """
 Chimi's `run' command uses the SAGA interface for Python (see
-http://saga-project.github.io/saga-python/), which provides a heterogenous API
+http://saga-project.github.io/saga-python/), which provides a homogenous API
 for accessing HPC resources.  A list of the available job-service adaptors, and
 the job-description attributes available for each, is available in the adaptor
 documentation (link below).
