@@ -72,7 +72,7 @@ def load_saga():
                     if '_ADAPTOR_DOC' in dir(mod):
                         chimi.job.ADAPTORS.append(mod)
                     del mod
-                except:
+                except ImportError:
                     pass
                 del subname
                 del modname
