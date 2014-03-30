@@ -437,20 +437,19 @@ def common(opts, *args):
 
     sys.stderr.write("Loading host configuration... ")
     host_config = chimi.config.HostConfig.load(host_name)
+    if 'host' in host_config.jobs.__dict__ and host_config.jobs.host:
+        host_name = host_config.jobs.host
     sys.stderr.write("loaded.\n")
+
+    opts['host'] = host_name
+    opts['user'] = user_name
 
     return (opts, {'host_config': host_config})
 
 def create_job_service(opts, host_config):
-    host_name = None
-    user_name = None
+    host_name = opts['host']
+    user_name = opts['user']
     context = None
-
-    if 'host' in opts:
-        host_name = opts['host']
-
-    if host_name and '@' in host_name:
-        user_name, host_name = host_name.split('@')
 
     access_type = None
     if not host_config.matches_current_host:
