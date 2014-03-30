@@ -415,8 +415,8 @@ class CharmArchitecture(object):
         """
         allprops = self.merge_property_with_inherited(('_options', '_compilers', '_fortran_compilers'))
         out = allprops[0]
-        out.extend(allprops[1])
-        out.extend(allprops[2])
+        for lst in allprops[1:]:
+            out.extend(lst)
         return out
 
     @property
