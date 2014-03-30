@@ -343,50 +343,62 @@ def build_changa_invocation(opts, job_description, build,
         base_arch.name == 'net' and \
         not 'ibverbs' in build.config.components
 
-    # If we're using more than one CPU -- or running locally on a `net' build
-    # -- we need to launch with charmrun.
-    if node_count > 1 or total_cpu_count > 1 or \
-            (local_net and not changa_invocation_as_argument) or \
-            (local_net and changa_invocation_as_argument and '{}' in user_args):
-        out = [charmrun_path]
-
-        if job_description.attribute_exists(saga.job.TOTAL_CPU_COUNT):
-            out.append('+p%d'% total_cpu_count)
-
+    # Don't need ++mpiexec or a remote shell for non-ibverbs local runs.
     if local_run and not 'ibverbs' in build.config.components:
         lc.mpiexec = False
         lc.remote_shell = None
 
+    # Are we using a remote shell?  For certain remote-shell names we need to
+    # actually create a script.
+    remote_shell = lc.remote_shell
+    if remote_shell:
+        scripts_dir = os.path.join(package_set.directory, 'chimi-tmp', 'scripts')
+        if not os.path.isdir(scripts_dir):
+            os.makedirs(scripts_dir)
+        if remote_shell == 'ibrun-adaptor':
+            script_path = os.path.join(scripts_dir, 'ibrun-adaptor.sh')
+            if not os.path.isfile(script_path):
+                file(script_path, 'w').write("#!/bin/sh\necho ibrun-adaptor args: \"$@\" > /dev/stderr\nshift; shift; exec ibrun \"$@\"\n")
+                st = os.stat(script_path)
+                os.chmod(script_path, st.st_mode | stat.S_IXUSR)
+            remote_shell_relpath = os.path.relpath(script_path, job_description.working_directory)
+            if len(remote_shell_relpath) < len(script_path):
+                remote_shell = remote_shell_relpath
+            else:
+                remote_shell = script_path
 
-    if base_arch.name == 'net':
-        # `net'-specific options.
-        if node_count > 1 and processes_per_host > 1 and job_description.attribute_exists(saga.job.PROCESSES_PER_HOST):
-            assert(processes_per_host < cpus_per_host)
-            out.extend(['++ppn', str(job_description.processes_per_host)])
+    # If we're using more than one CPU -- or running locally on a `net' build
+    # -- we need to launch with charmrun.
+    using_charmrun = False
+    if node_count > 1 or total_cpu_count > 1 or \
+            (local_net and not changa_invocation_as_argument) or \
+            (local_net and changa_invocation_as_argument and '{}' in user_args):
+        out = [charmrun_path]
+        using_charmrun = True
 
-        if lc.mpiexec and not local_run:
-            out.append('++mpiexec')
+        if job_description.attribute_exists(saga.job.TOTAL_CPU_COUNT):
+            out.append('+p%d'% total_cpu_count)
 
-            rs = lc.remote_shell
-            if rs:
-                scripts_dir = os.path.join(package_set.directory, 'chimi-tmp', 'scripts')
-                if not os.path.isdir(scripts_dir):
-                    os.makedirs(scripts_dir)
-                out.append('++remote-shell')
-                if rs == 'ibrun-adaptor':
-                    script_path = os.path.join(scripts_dir, 'ibrun-adaptor.sh')
-                    if not os.path.isfile(script_path):
-                        file(script_path, 'w').write("#!/bin/sh\necho ibrun-adaptor args: \"$@\" > /dev/stderr\nshift; shift; exec ibrun \"$@\"\n")
-                        st = os.stat(script_path)
-                        os.chmod(script_path, st.st_mode | stat.S_IXUSR)
-                    out.append(os.path.relpath(script_path, job_description.working_directory))
-                else:
-                    raise ValueError('Unknown value "%s" for jobs.launch.remote-shell'%str(rs))
+        if base_arch.name == 'net':
+            # `net'-specific options.
+            if node_count > 1 and processes_per_host > 1 and job_description.attribute_exists(saga.job.PROCESSES_PER_HOST):
+                assert(processes_per_host < cpus_per_host)
+                out.extend(['++ppn', str(job_description.processes_per_host)])
+
+            if lc.mpiexec and not local_run:
+                out.append('++mpiexec')
+
+            if remote_shell:
+                out.extend(['++remote-shell', remote_shell])
+    elif remote_shell:
+        # When we're *not* using charmrun, this should be the first element.
+        assert(len(out) == 0)
+        out.append(remote_shell)
 
     # Now write the ChaNGa command line.
     if not changa_invocation_as_argument:
         out.append(changa_path)
-        if local_net:
+        if local_net and using_charmrun:
             out.append('++local')
         if job_description.attribute_exists(saga.job.WALL_TIME_LIMIT):
             out.extend(['-wall', str(job_description.wall_time_limit)])
@@ -400,7 +412,7 @@ def build_changa_invocation(opts, job_description, build,
             insert_index = out.index('{}') + 1
             out[insert_index - 1] = changa_path
 
-            if local_net:
+            if local_net and using_charmrun:
                 out.insert(insert_index, '++local')
                 insert_index += 1
 
