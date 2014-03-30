@@ -466,7 +466,7 @@ def create_job_service(opts, host_config):
     uri = chimi.job.service_uri(job_manager, host_name, access_type, host_config)
 
     if chimi.settings.noact:
-        return chimi.util.create_struct(None, 'FakeService', url=uri)()
+        return chimi.util.create_struct(None, 'FakeService', url=uri, list=lambda: [])()
     else:
         # Load the SAGA security context.
         sys.stderr.write("Loading SAGA security context... ")
