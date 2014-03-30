@@ -24,7 +24,6 @@ import re
 # Option-data storage/representation.  Used to declare/define a single program
 # option.
 class Option:
-    LINE_WRAP_COLUMN=96
     short_name = None
     long_name = None
     description = None
@@ -159,8 +158,7 @@ class Option:
 
         import chimi.util
         return ('%%-%ds%%s' % wrap_start_col) % (out, chimi.util.wrap_text(self.description,
-                                                                           wrap_start_col,
-                                                                           Option.LINE_WRAP_COLUMN))
+                                                                           wrap_start_col))
     def get_preferred_key(self):
         if self.long_name != None:
             return self.long_name
@@ -303,6 +301,7 @@ class OptionParser:
 
     @classmethod
     def format_help(self, option_list, usage, description):
+        import chimi.util
         all_options = option_list
 
         normalized = self.normalize_sections(option_list)
@@ -338,7 +337,7 @@ class OptionParser:
 
         out += OptionParser.format_usage(usage)
         if description != None:
-            out += "\n%s\n" % description
+            out += "\n%s\n" % chimi.util.wrap_text(description)
 
         if len(all_options) > 0:
             for section_name in normalized:
