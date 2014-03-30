@@ -21,12 +21,15 @@ __author__    = 'Collin J. Sutton'
 __copyright__ = 'Copyright (C) 2014 Collin J. Sutton'
 __license__   = 'GPLv2'
 
+
 import os
 import sys
-__dir__ = os.path.dirname(os.path.abspath(__file__))
-parentdir = os.path.dirname(__dir__)
-if os.path.exists(os.path.join(parentdir, 'Makefile')):
-    sys.path.insert(0, parentdir)
+
+_dir = os.path.dirname(os.path.abspath(__file__))
+if os.path.isdir(_dir) and os.path.exists(os.path.join(_dir, 'Makefile')):
+    # Running from the Chimi source directory.
+    sys.path.insert(0, _dir)
+del _dir
 
 import chimi.transient
 chimi.transient.import_(__name__, 'chimi.command')
