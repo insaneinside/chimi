@@ -343,6 +343,8 @@ class ChaNGaDefinition(PackageDefinition):
                 _build.update(BuildStatus.InterruptedByUser)
             else:
                 _build.update(BuildStatus.Complete, 'ChaNGa build complete.')
+                assert(_build.status == BuildStatus.Complete)
+                assert(_build.compiled == True)
 
         return _build
 
