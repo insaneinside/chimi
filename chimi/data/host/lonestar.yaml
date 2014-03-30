@@ -14,7 +14,7 @@ module-system: 'lmod'
 
 build:
   architecture: 'net-linux-x86_64'
-  options:
+  components:
     icc:                        # Intel compiler suite
       default: yes
     ibverbs:

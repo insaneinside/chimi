@@ -37,6 +37,19 @@ def get_architecture(base_arch=DEFAULT_COMMS_TYPE):
     osname, hostname, discard, discard, machname = os.uname()
     return '-'.join([base_arch, osname.lower(), machname.lower()])
 
+def make_dict_keys_snake_case_recursive(d):
+    """
+    Recursively convert a dict's keys, **in-place**, from spinal-case to
+    snake-case.
+
+    """
+    keys = d.keys()
+    for k in keys:
+        if '-' in k:
+            k2 = k.replace('-', '_')
+            d[k2] = d[k]
+            del d[k]
+    return d
 
 class HostBuildOption(object):
     """
@@ -44,7 +57,7 @@ class HostBuildOption(object):
 
     """
     def __init__(self, name, enable_by_default=False,
-                 prerequisite_options=[], apply_settings={}, apply_extras=[]):
+                 prerequisite_components=[], apply_settings={}, apply_extras=[]):
         """
         name: option name
         enable_by_default: whether this option should be enabled by default on
@@ -58,7 +71,7 @@ class HostBuildOption(object):
         if isinstance(name, str):
             self.name = name
             self.enable_by_default = enable_by_default
-            self.prerequisite_options = prerequisite_options
+            self.prerequisite_components = prerequisite_components
             self.apply_settings = apply_settings
             self.apply_extras = apply_extras
         elif isinstance(name, tuple):
@@ -70,24 +83,24 @@ class HostBuildOption(object):
             self.enable_by_default = False
             if 'default' in d:
                 self.enable_by_default = d['default']
-            elif 'enable-by-default' in d:
-                self.enable_by_default = d['enable-by-default']
+            elif 'enable_by_default' in d:
+                self.enable_by_default = d['enable_by_default']
             assert(type(self.enable_by_default) == bool)
 
-            self.prerequisite_options = []
-            for po in ['options', 'prerequisites', 'prerequisite-options']:
+            self.prerequisite_components = []
+            for po in ['components', 'prerequisites', 'prerequisite_components']:
                 if po in d:
-                    self.prerequisite_options = d[po]
-            assert(type(self.prerequisite_options) == list)
+                    self.prerequisite_components = d[po]
+            assert(type(self.prerequisite_components) == list)
 
             self.apply_settings = {}
-            for _as in ['settings', 'apply-settings']:
+            for _as in ['settings', 'apply_settings']:
                 if _as in d:
                     self.apply_settings = d[_as]
             assert(type(self.apply_settings) == dict)
 
             self.apply_extras = []
-            for ae in ['extras', 'apply-extras']:
+            for ae in ['extras', 'apply_extras']:
                 if ae in d:
                     self.apply_extras = d[ae]
             assert(type(self.apply_extras) == list)
@@ -98,20 +111,20 @@ class HostBuildOption(object):
 class HostBuildConfig(object):
     """Build configuration values for a specific host."""
     def __init__(self, arch=None, components=None):
-        if isinstance(arch, dict) and options == None:
+        if isinstance(arch, dict) and components == None:
             d = arch
 
-            if 'architecture' in d:
-                self.architecture = d['architecture']
+            if 'default_architecture' in d:
+                self.default_architecture = d['default_architecture']
             else:
-                self.architecture = chimi.config.get_architecture()
+                self.default_architecture = chimi.config.get_architecture()
 
             self.components = {}
             if 'components' in d:
                 for oname in d['components']:
                     self.components[oname] = HostBuildOption((oname, d['components'][oname]))
         elif isinstance(arch, str) and isinstance(components, dict):
-            self.architecture = arch
+            self.default_architecture = arch
             for oname in components:
                 self.components[oname] = HostBuildOption((oname, components[oname]))
         else:
@@ -133,8 +146,12 @@ class HostBuildConfig(object):
         import chimi.build
         assert(isinstance(build_config, chimi.build.BuildConfig))
         negated_components, negated_features, negated_settings = negations
+        arch = build_config.architecture
+        if isinstance(arch, basestring):
+            arch = chimi.core.CharmDefinition.Architectures[arch]
+        arch_options = arch.all_options
         for optname in self.components:
-            if not optname in negated_components:
+            if optname in arch_options and not optname in negated_components:
                 opt = self.components[optname]
                 # Set the build option if the host data specifies it should be used
                 # by default.
@@ -147,7 +164,7 @@ class HostBuildConfig(object):
                 if optname in build_config.components:
                     # Enable all prerequisites for the option.
                     build_config.components.extend(list(set(opt.prerequisite_components).
-                                                     difference(set(build_config.components))))
+                                                        difference(set(build_config.components))))
 
                     # Apply settings defined by the host configuration.
                     if len(opt.apply_settings) > 0:
@@ -193,7 +210,8 @@ class HostJobConfig(object):
 
     def __init__(self, d=None):
         if isinstance(d, dict):
-            if 'job-manager' in d:
+            make_dict_keys_snake_case_recursive(d)
+            if 'job_manager' in d:
                 self.manager = d['manager']
             else:
                 self.manager = self.determine_job_manager()
@@ -203,12 +221,7 @@ class HostJobConfig(object):
 
             if 'launch' in d:
                 launch = d['launch']
-                keys = launch.keys()
-                for k in keys:
-                    if '-' in k:
-                        k2 = k.replace('-', '_')
-                        launch[k2] = launch[k]
-                        del launch[k]
+                make_dict_keys_snake_case_recursive(launch)
                 self.launch = HostJobConfig.LaunchConfig(**launch)
             else:
                 self.launch = HostJobConfig.LaunchConfig()
@@ -237,6 +250,7 @@ class HostConfig(object):
 
     def __init__(self, d=None, aliases=None, build=None, jobs=None):
         if isinstance(d, dict) and aliases==None and build == None and jobs == None:
+            make_dict_keys_snake_case_recursive(d)
             if 'hostname' in d:
                 self.hostname = d['hostname']
 
@@ -246,7 +260,8 @@ class HostConfig(object):
                 self.aliases = []
 
             if 'build' in d:
-                self.build = HostBuildConfig(d['build'])
+                b = d['build']
+                self.build = HostBuildConfig(b)
             else:
                 self.build = HostBuildConfig({})
 
@@ -255,8 +270,8 @@ class HostConfig(object):
             else:
                 self.jobs = HostJobConfig({})
 
-            if 'module-system' in d:
-                self.module_system = d['module-system']
+            if 'module_system' in d:
+                self.module_system = d['module_system']
             else:
                 self.module_system = None
         else:
