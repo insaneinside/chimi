@@ -396,8 +396,8 @@ class Table(object):
                 value = str(data[i])
                 match = self.color_re.match(value)
                 if match:
-                    value = match.groups(1)
-                _len = len(str(data[i]))
+                    value = match.group(2)
+                _len = len(value)
                 self.column_data_widths[i] = max(self.column_data_widths[i], _len)
                 self.column_value_widths[i].append(_len)
             self.rows.append(data)
