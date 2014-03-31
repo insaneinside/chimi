@@ -18,9 +18,9 @@ build of Charm++.  It provides
 Configuration files use the [YAML](http://yaml.org/) format, and should be easy
 to write for new hosts.
 
-Chimi is under moderate development and is still growing somewhat organically;
-it's not yet ready for general use (and is poorly documented); feel free to try
-it out, but nothing is promised. ;)
+Chimi is in an alpha state: the overall design is relatively stable, but some
+features may be buggy or incomplete and the documentation is lacking.  Feel
+free to try it out, but nothing is promised. ;)
 
 
 ## Installing
@@ -88,6 +88,10 @@ for usage and sub-command information.
 Chimi is a "commandlet"-based program with a usage style similar to that of
 e.g. [git](http://git-scm.org).
 
+If you're ever unsure about what a command does (or how it will interpret its
+arguments), passing the `-n` flag immediately after `chimi` will prevent Chimi
+from performing any (potentially hazardous) operations.
+
 Options to each command are specific *to that command*: `chimi -n job run foo`
 is **not** the same as `chimi job run -n foo` or even `chimi job -n run foo`.
 The sole exception is `-h`/`--help`, which is available for all commands.
@@ -107,8 +111,48 @@ be accessed via
 Note that these two forms are functionally identical, and the only difference
 is that in the latter case the full "command" is specified as two arguments.
 
+For a listing of the available top-level commands, just use
+
+    chimi help
+
 Printing of a command's built-in documentation will also be triggered if the
 option `-h` or `--help` is given.
+
+### `init` and `fetch`: initialize Chimi database and fetch package sources
+
+Many of Chimi's commands use information that *could* be collected from a
+directory tree at each run, but are not because well that's just stupid; others
+(such as `build`) need to store information for later retrieval (such as build
+failure/success messages).  To create the bookkeeping database, we run
+
+    chimi init DIR
+
+to initialize a Chimi data file called "chimi.yaml" in DIR, recording therein
+the current state of defined Chimi packages.  Those packages are ChaNGa (in
+`changa`), Charm++ (in `charm`), and the cosmology-related utility library that
+seems to lack a proper name (in `utility`).
+
+If `changa` and `charm` already exist, Chimi will attempt to index the existing
+builds in each; otherwise the git repositories need to be cloned.  Once a
+working directory has been initialized, running
+
+    chimi fetch
+
+from that directory will clone missing repositories and update existing ones if
+possible.  When updating a repository, Chimi executes `git pull --ff-only
+origin` directly and so will not clobber any uncommitted/unmerged changes --
+unless, of course, you've somehow configured git to do so anyway (in which case
+you have only yourself to blame).
+
+**NOTE:** Chimi requires that both Charm++ and ChaNGa support out-of-source
+builds, which the official version of ChaNGa does not as of this writing.  The
+changes required to support out-of-source builds can be found in the
+"build-system-fixes" branch of <https://github.com/insaneinside/charm.git>.
+
+To use a non-default repository or branch for a package, either manually clone
+the repository or change Chimi's default.  To select a different default
+repository, edit the appropriate data in "chimi/settings.py" and (re)build
+Chimi.
 
 
 ### `build`: compile Charm++ and/or ChaNGa
@@ -126,7 +170,8 @@ aborted if the Charm++ build fails in such a case.
 Configuration-related options are:
 
   * `--arch`: specify the Charm++ build architecture to use.  For ChaNGa, this
-    determines the Charm++ build on which the ChaNGa build is based.
+    determines (along with Charm++ "option" names passed to `-o`) the Charm++
+    build on which the ChaNGa build is based.
   * `-b` or `--branch`: select a branch in the Git repository to use for the
     build.  If *not* given, the currently checked-out branch is used.  It is an
     error to specify a branch that does not exist.
@@ -139,28 +184,90 @@ Configuration-related options are:
     options and settings.  Both Charm++ "options" specifying build components
     and compilers, and settings normally available through `configure` script
     options, can be specified here. See section
-    [Options & Settings](#Options%20&amp;amp;%20Settings) for more information.
+    [Options & Settings](#options--settings) for more information.
 
 Although the build command is designed to provide a simple interface, its
 behaviour is necessarily somewhat complex and deserves a section of its own;
-see the section "Building packages" section in this document for a more
-thorough treatment of this command.
+see the section
+[Building Packages and Managing Builds](#building-packages-and-managing-builds)
+for a more thorough treatment of this command.
 
 ### `job`: manage and run ChaNGa batch jobs on grid systems
 
 Jobs can be submitted to batch systems (`run`), watched for status changes
 (`watch`), listed (`list`), and canceled (`cancel`).
 
-## Building packages
-### Options & Settings
-Chimi can inspect a Charm++ source directory to determine the available build
-architectures and the "options" (build components and compiler selections)
-available for each, and can determine configure-time options and settings from
-the "help" output of a configure script for either Charm++ or ChaNGa.
+## Building Packages and Managing Builds
+### Options, and their Practical Use
 
-Options and settings are specified with the `-o` or `--options` option to the
-build command.  This option takes a comma-separated list of settings and/or
-features to enable or disable; prefixing a name with "-" will disable it.
+Central to the task of building ChaNGa is the question, "What kind of topping
+would you like on that?"  Chimi fully supports all options available as part of
+the pre-compile software configuration process, and does so using a common
+interface for all option types.
+
+There are two primary sources of the build options supported by Chimi; let's
+take a look.
+
+#### Charm++-specific options
+
+ChaNGa is closely tied to Charm++, and as such a desired feature set in ChaNGa
+will often depend on a distinct build of Charm++.  For our purposes, each build
+of Charm++ is identified by three values:
+
+  * interprocess communication method (we call this the *base architecture*),
+  * host system type (OS and hardware architecture), and
+  * build options (compiler selection and support for various hardware
+    features).
+
+Taken together, the first two determine the *build architecture*.  Which
+options are available for a given build architecture are a function of that
+architecture's inheritance: most Charm++ *base* architectures define options
+specific to that IPC type, and within each base architecture most available
+host system types define further build options specific to that build
+architecture.
+
+There is a special architecture, "common", from which all base architectures
+inherit build options.
+
+Chimi can inspect the working directory of a Charm++ repository to determine
+available architectures and the options defined by each.  To do this, use
+the `show arch` command:
+
+    chimi show arch
+
+Appending the `-u` flag will cause Chimi to show only non-inherited options,
+while `-l` will dispense with the display of options altogether.  To display
+only certain architectures, pass their names as arguments to the "show arch"
+command, e.g.
+
+    chimi show arch net
+
+Within Chimi, Charm++ build options are generally referred to as "components"
+to avoid confusion with e.g. `configure` script options and Chimi command
+options.
+
+#### `configure` script options
+
+Both Charm++ and ChaNGa use GNU Autoconf for build configuration, and provide
+additional build features and settings through a script called `configure`.
+
+Running
+
+    chimi show options
+
+will produce a table of the available (`configure` script) build options for
+each of ChaNGa and Charm++.
+
+
+#### Applying options
+
+Options and settings are specified as arguments to the `-o` or `--options`
+option to `chimi build`.  This option takes a comma-separated list of option
+declarations, where each declaration is one of
+
+  * "option", "option=true", or "option=on" to enable the named option,
+  * "-option", "option=false", or "option=off" to disable the named option, or
+  * "option=value" to set an option to a non-boolean argument.
 
 For example, one might use
 
@@ -177,6 +284,9 @@ and Chimi would figure out that the two "cuda" options are semantically
 distinct: the first maps to the Charm++ "cuda" build component, while the
 second maps to the `--with-cuda=...` "configure" option.
 
+### Build Management
+
+To be written...
 
 ## License
 
