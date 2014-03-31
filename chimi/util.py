@@ -60,14 +60,21 @@ def terminal_size(fd=None):
                                           TERMINAL_SIZE_INPUT_DATA))
     return w, h
 
-def create_struct(__module, __name, **__defaults):
+def create_struct(__module, __name, *__fields, **__defaults):
     """Create a structure type with default values for each field."""
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
         setattr(self, '__dict__', self)
         for elt in __defaults:
             setattr(self, elt, __defaults[elt])
-        for elt in kwargs:
-            setattr(self, elt, kwargs[elt])
+        for elt in set(__fields).difference(set(__defaults.keys())):
+            setattr(self, elt, None)
+        if len(args) > 0:
+            args = list(args)
+            for elt in __fields[:len(args)]:
+                setattr(self, elt, args.pop(0))
+        if len(kwargs) > 0:
+            for elt in kwargs:
+                setattr(self, elt, kwargs[elt])
 
     __type = type(__name, (dict,), {'__init__': __init__,
                                     '__module__': __module})
