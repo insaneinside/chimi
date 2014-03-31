@@ -635,6 +635,35 @@ def show_builds(opts, *args):
         sys.stderr.write('No matching builds.\n')
     return 0
 
+def show_configure_options(opts, *args):
+    which = 'all'
+    if len(args) > 0:
+        which = args[0]
+    pkgnames = [which]
+    if which == 'all':
+        pkgnames = ['changa', 'charm']
+
+    def compare_opts(x, y):
+        z = cmp(x.kind, y.kind)
+        return z if z != 0 else cmp(x.name, y.name)
+
+    ps = chimi.command.find_current_package_set()
+    for pkgname in pkgnames:
+        package = ps.packages[pkgname]
+        if len(pkgnames) > 1:
+            print('%s:' % package.definition.name)
+
+        t = chimi.util.Table(cols=('Name', 'Type', 'Default', 'Documentation', ''))
+        cfgopts = sorted(package.definition.get_configure_options(package).values(),
+                         cmp=compare_opts)
+        kind_map = {'enable': 'feature', 'with': 'setting'}
+        default_map = {True: '\033[%smenabled\033[0m' % chimi.util.ANSI_COLORS['green'],
+                       False: '\033[%smdisabled\033[0m' % chimi.util.ANSI_COLORS['red']}
+        for o in cfgopts:
+            t.append((o.name, kind_map[o.kind], default_map[o.default],
+                     '--%s-%s%s' % (o.documented_kind, o.name, o.arg_doc), o.doc))
+        print(t.render(use_color=sys.stdout.isatty()))
+
 COMMAND_LIST = [
     Command('init', ['DIR'], 'Bootstrap Chimi configuration from existing files.',
             [], None, bootstrap),
@@ -789,6 +818,22 @@ The `--type' option accepts several values, which are explained here.
                      Option('a', 'arch', 'Filter by architecture ARCH and descendents.',
                             'ARCH').store(),
                      ], None, callback=show_builds),
+            Command('options', ['[all|changa|charm]'], 'List available `configure\' options for package(s) [default `all\'].',
+                    [],
+                    """
+This command scrapes the output of a `configure' script's help output and
+displays a table of the reported --enable/--with options.  The table includes
+name, option type, default value, and the documentation as originally written;
+note that when specifying a value to e.g. `chimi build -o', the syntax must be
+one of
+
+  * "option", "option=true", or "option=on" to enable the named option,
+  * "-option", "option=false", or "option=off" to disable the named option, or
+  * "option=value" to set an option to a non-boolean argument,
+
+i.e. *not* using "--enable" or "--with"-style command arguments.
+""",
+                    callback=show_configure_options),
             ]),
     ]
 
