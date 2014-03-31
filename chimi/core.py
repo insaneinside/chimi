@@ -126,13 +126,50 @@ def build_configure_flags(definition, config):
 
     return out
 
+class PackageConfigureOption(object):
+    """
+    An option that may be specified to a package's `configure' script.
+
+    """
+    def __init__(self, name, kind, doc, arg_doc):
+        self.name = name
+        self.doc = doc
+        self.arg_doc = arg_doc
+
+        self.documented_kind = kind
+
+        if kind == 'enable':
+            self.default = False
+            self.kind = 'enable'
+        elif kind == 'disable':
+            self.default = True
+            self.kind = 'enable'
+        elif kind == 'with':
+            self.default = False
+            self.kind = 'with'
+        elif kind == 'without':
+            self.default = True
+            self.kind = 'with'
+        else:
+            os.abort()
+
+    @property
+    def accepts_argument(self):
+        return len(arg_doc) > 0
+
+    @property
+    def requires_argument(self):
+        return arg_doc[0] != '['
+
+    def __repr__(self):
+        return '<%s:%s kind:%s default:%s%s>' \
+            % (self.__class__.__name__, self.name,
+               self.kind, self.default,
+               ''  if not self.arg_doc or not len(self.arg_doc) \
+                   else ' arg:%s' % self.arg_doc)
 class PackageDefinition(object):
     """Information about how to fetch and build a particular package."""
 
-    ConfigureOption = chimi.util.create_struct(__name__, 'ConfigureOption',
-                                               kind='enable',
-                                               name=None,
-                                               default=None)
     name = None
     repository = None
 
@@ -154,40 +191,48 @@ class PackageDefinition(object):
 
         script = self.get_configure_path(instance)
         script_help = subprocess.check_output([script, '--help'])
-        lre = re.compile(r'^\s*--(enable|disable|with|without)-([^\s\[=]+)')
-        lines = filter(lambda x: lre.match(x), script_help.split('\n'))
+        lre = re.compile(r'^((\s*)--(enable|disable|with|without)-([^\s\[=]+)([=\[]?[^\s]*)\s*)(.*)$')
+        lines = script_help.split('\n')
 
-        o = {}
-
-        for l in lines:
-            m = lre.match(l)
-            kind, name = m.groups()
-
-            opt = None
-            if kind == 'enable':
-                opt = self.ConfigureOption(kind='enable', name=name, default=False)
-            elif kind == 'disable':
-                opt = self.ConfigureOption(kind='enable', name=name, default=True)
-            elif kind == 'with':
-                opt = self.ConfigureOption(kind='with', name=name, default=False)
-            elif kind == 'without':
-                opt = self.ConfigureOption(kind='with', name=name, default=True)
-            else:
-                # this should never happen -- the regular expression ensures
-                # that one of the above conditions is true.
-                os.abort()
-
-
+        opts = {}
+        last_align = 0
+        last_groups = None
+        def handle_option(groups):
+            pre, indent, kind, name, arg_doc, doc = groups
+            name = name.strip()
+            arg_doc = arg_doc.strip()
+            doc = doc.strip()
+            opt = PackageConfigureOption(name, kind, doc, arg_doc)
             if (opt.kind == 'enable' and opt.name == 'FEATURE') or \
                     (opt.kind == 'with' and opt.name == 'PACKAGE'):
                 # Skip the example options.
-                continue
-            elif name in o:
+                return
+            elif name in opts:
                 raise ValueError('%s: `configure\' option name conflict: %s'%(self.name, name))
             else:
-                o[name] = opt
+                opts[name] = opt
+
+        for i in xrange(len(lines)):
+            m = lre.match(lines[i])
+            if m:
+                indent, pre, kind, name, eq, doc = m.groups()
+                if last_groups:
+                    handle_option(last_groups)
+                    last_groups = None
+                last_align = len(pre)
+                last_groups = list(m.groups())
+            else:
+                if last_align > 0 and lines[i].startswith(' ' * last_align):
+                    last_groups[-1] += ' ' + lines[i].strip()
+                else:
+                    if last_groups:
+                        handle_option(last_groups)
+                        last_groups = None
+                    last_align = 0
+
         chimi.transient.pop(')')
-        return o
+
+        return opts
 
     @classmethod
     def get_build_name(self, build):
