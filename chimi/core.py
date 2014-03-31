@@ -223,9 +223,10 @@ class PackageDefinition(object):
             parent_dir = os.path.dirname(srcdir)
             if not os.path.exists(parent_dir) and not chimi.settings.noact:
                 os.makedirs(parent_dir)
-            check_call(['git', 'clone', self.repository, srcdir], cwd=parent_dir)
+            check_call(['git', 'clone', '-b', self.repository.branch, self.repository.url, srcdir],
+                       cwd=parent_dir)
         else:
-            check_call(['git', 'pull', 'origin'], cwd=srcdir)
+            check_call(['git', 'pull', '--ff-only', 'origin'], cwd=srcdir)
 
 
 class ChaNGaDefinition(PackageDefinition):

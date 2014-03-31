@@ -19,12 +19,16 @@ associated with any one Chimi module.
 
 """
 
+import chimi.util
+DefaultRepository = chimi.util.create_struct(__name__, 'DefaultRepository',
+                                             'url', 'branch')
+
 DEFAULT_REPOSITORIES={
-    'charm' : 'http://charm.cs.uiuc.edu/gerrit/charm',
-    'changa' : 'http://charm.cs.uiuc.edu/gerrit/changa',
-    'utility' : 'http://charm.cs.illinois.edu/gerrit/cosmo/utility.git'
+    'charm'   : DefaultRepository('http://charm.cs.illinois.edu/gerrit/charm.git',     'master'),
+    'changa'  : DefaultRepository('http://charm.cs.illinois.edu/gerrit/cosmo/changa',  'master'),
+    'utility' : DefaultRepository('http://charm.cs.illinois.edu/gerrit/cosmo/utility', 'master')
     }
-"""Default URIs for remote Git repositories"""
+"""Default URLs and branches for remote Git repositories."""
 
 
 
