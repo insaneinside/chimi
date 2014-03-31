@@ -147,7 +147,7 @@ you have only yourself to blame).
 **NOTE:** Chimi requires that both Charm++ and ChaNGa support out-of-source
 builds, which the official version of ChaNGa does not as of this writing.  The
 changes required to support out-of-source builds can be found in the
-"build-system-fixes" branch of <https://github.com/insaneinside/charm.git>.
+"build-system-fixes" branch of <https://github.com/insaneinside/changa.git>.
 
 To use a non-default repository or branch for a package, either manually clone
 the repository or change Chimi's default.  To select a different default
