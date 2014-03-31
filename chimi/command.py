@@ -264,14 +264,18 @@ def find_current_package_set():
                                  "Do you need to run `%s init .'?\n" % basename)
             exit(1)
 
-def fetch_sources(opts, dest_dir=None):
+def fetch_sources(opts, which='all'):
     ps = find_current_package_set()
-    if dest_dir == None:
-        dest_dir = ps.directory
+    dest_dir = ps.directory
     if not os.path.exists(dest_dir) and not chimi.settings.noact:
         os.makedirs(dest_dir)
 
-    for proj in ps.packages:
+    if which == 'all':
+        which = ps.packages.keys()
+    if not isinstance(which, list):
+        which = [which]
+
+    for proj in which:
         ps.packages[proj].fetch()
 
 
@@ -634,9 +638,9 @@ def show_builds(opts, *args):
 COMMAND_LIST = [
     Command('init', ['DIR'], 'Bootstrap Chimi configuration from existing files.',
             [], None, bootstrap),
-    Command('fetch', ['[DESTDIR]'], 'Fetch or update program sources.',
-            [],
-            None, fetch_sources),
+    Command('fetch', ['[all|changa|charm|utility]'],
+            'Fetch or update (safely/without clobbering) sources for the named package.',
+            [], None, fetch_sources),
     Command('help', ['[COMMAND]'], 'Show help on available commands.',
             [],
             "If COMMAND is given, show help for that command.  Otherwise, "+
