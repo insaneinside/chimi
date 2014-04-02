@@ -13,7 +13,7 @@ aliases: ['lonestar', 'lonestar4',
 module-system: 'lmod'
 
 build:
-  architecture: 'net-linux-x86_64'
+  default-architecture: 'net-linux-x86_64'
   components:
     icc:                        # Intel compiler suite
       default: yes
