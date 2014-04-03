@@ -293,7 +293,7 @@ class ChaNGaDefinition(PackageDefinition):
 
     @classmethod
     def get_build_directory(self, build):
-        return os.path.join(build.package.directory, 'builds', build.name)
+        return os.path.join(build.package.directory, 'builds', str(build.uuid))
 
     @classmethod
     def get_build_version(self, build):
