@@ -25,11 +25,11 @@ GENERATED_FILES=chimi/data/host-index.yaml $(PYC_SOURCES) $(PYO_SOURCES) build/b
 
 $(PYC_SOURCES): build/bytecompile.stamp
 build/bytecompile.stamp: $(PY_SOURCES)
-	python -m compileall $^ && touch $@
+	python -m compileall $^ && (test -d $(dir $@) || mkdir -p $(dir $@)) && touch $@
 
 $(PYO_SOURCES): build/bytecompile-o.stamp
 build/bytecompile-o.stamp: $(PY_SOURCES)
-	python -Om compileall $^ && touch $@
+	python -Om compileall $^ && (test -d $(dir $@) || mkdir -p $(dir $@)) && touch $@
 
 build/chimi: | build/bytecompile-o.stamp
 build/chimi: $(PY_SOURCES) $(PYO_SOURCES) $(DATA_FILES)
