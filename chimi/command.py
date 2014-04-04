@@ -27,17 +27,18 @@ import os
 import re
 import sys
 
-from chimi.option import Option, OptionParser
-
 import chimi
 import chimi.job
 import chimi.core
 import chimi.settings
 
+from chimi.core import PackageSet
+from chimi.option import Option, OptionParser
+
 basename = os.path.basename(sys.argv[0])
 
 __all__ = ['CommandError', 'CommandUsageError', 'SubcommandError', 'Command',
-           'find_current_package_set', 'main']
+           'find_current_package_dir', 'find_current_package_set', 'main']
 
 class CommandError(chimi.Error):
     pass
@@ -236,12 +237,11 @@ def load_platform_resources():
 def is_root_dir(_dir):
     return os.path.dirname(_dir) == _dir
 
-def find_current_package_set():
+def find_current_package_dir():
     _dir = os.getcwd()
-    PackageSet = chimi.core.PackageSet
     check = os.path.join(_dir, PackageSet.SET_FILE)
     if os.path.exists(check):
-        return PackageSet.load(_dir);
+        return _dir
     else:
         while not os.path.exists(check):
             if os.path.ismount(_dir):
@@ -250,7 +250,7 @@ def find_current_package_set():
                 _dir = os.path.dirname(_dir)
                 check = os.path.join(_dir, PackageSet.SET_FILE)
         if os.path.exists(check):
-            return PackageSet.load(_dir)
+            return _dir
         else:
             if is_root_dir(os.getcwd()):
                 sys.stderr.write("The current directory does not look like " +
@@ -263,6 +263,10 @@ def find_current_package_set():
                                  "initialized chimi directory.  " +
                                  "Do you need to run `%s init .'?\n" % basename)
             exit(1)
+
+def find_current_package_set():
+    _dir = find_current_package_dir()
+    return PackageSet.load(_dir)
 
 def fetch_sources(opts, which='all'):
     ps = find_current_package_set()
