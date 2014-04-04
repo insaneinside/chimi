@@ -183,7 +183,7 @@ class Command(object):
         try:
             opts_out.update(OptionParser.handle_options(options, args, stop_set))
         except Exception as err:
-            sys.stderr.write('%s: %s' % (self.name, err.message))
+            sys.stderr.write('%s: %s\n' % (self.name, err.message))
             return 3;
 
         if len(self.subcommands) == 0:
