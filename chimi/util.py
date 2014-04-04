@@ -80,6 +80,14 @@ def create_struct(__module, __name, *__fields, **__defaults):
                                     '__module__': __module})
     return __type
 
+def create_enum(__module__, __name, *__entries, **kwargs):
+    vals = {}
+    if 'doc' in kwargs:
+        vals['__doc__'] = kwargs['doc']
+    for i in xrange(len(__entries)):
+        vals[__entries[i]] = i
+    return type(__name, (object,), vals)
+
 
 def wrap_text(_in, start_col=0, max_col=75, respect_newlines=True):
     """
