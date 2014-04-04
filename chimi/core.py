@@ -31,7 +31,6 @@ import shutil
 import datetime
 import textwrap
 import threading
-import subprocess
 from collections import Counter
 
 import chimi
@@ -41,36 +40,11 @@ import chimi.transient
 from chimi.build import Build
 from chimi.build import BuildStatus
 from chimi.build import BuildConfig
+from chimi.util import check_call
 
 git = chimi.transient.OnDemandLoader(__name__, 'git')
 yaml = chimi.transient.OnDemandLoader(__name__, 'yaml' )
 
-
-def check_call(call, cwd=None):
-    oldcwd = os.getcwd();
-
-    if cwd != None and cwd != oldcwd:
-        # the directory might not even exist if no-act is enabled, so don't
-        # actually switch directory if it is [enabled].
-        if not chimi.settings.noact:
-            os.chdir(cwd)
-    else:
-        cwd = oldcwd
-
-    if len(call) == 1 and isinstance(call[0], list):
-        call = call[0]
-
-    result = 0
-
-    if chimi.settings.noact:
-        sys.stderr.write('would execute [in %s]: %s\n' % (os.path.relpath(cwd, oldcwd), ' '.join(call)))
-    else:
-        result = subprocess.check_call(call)
-
-    if not chimi.settings.noact:
-        os.chdir(oldcwd)
-
-    return result
 
 def get_cuda_dir():
     """Attempt to find the location of the CUDA toolkit on the local machine."""

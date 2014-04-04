@@ -171,6 +171,43 @@ def wrap_text(_in, start_col=0, max_col=75, respect_newlines=True):
     return out
 
 
+def check_call(call, cwd=None, out=None, err=None):
+    """
+    Run (or pretend to run, depending on the value of `chimi.settings.noact`) a
+    command using `subprocess.check_call`.
+
+    """
+    import subprocess
+    import chimi.settings
+    oldcwd = os.getcwd();
+
+    if cwd != None and cwd != oldcwd:
+        # the directory might not even exist if no-act is enabled, so don't
+        # actually switch directory if it is [enabled].
+        if not chimi.settings.noact:
+            os.chdir(cwd)
+    else:
+        cwd = oldcwd
+
+    if len(call) == 1 and isinstance(call[0], list):
+        call = call[0]
+
+    result = 0
+
+    if chimi.settings.noact:
+        sys.stderr.write('would execute [in %s]: %s\n' % (os.path.relpath(cwd, oldcwd), ' '.join(call)))
+    else:
+        try:
+            subprocess.check_call(call, stdout=out, stderr=err)
+        except subprocess.CalledProcessError as error:
+            result = error.returncode
+        except TypeError:
+            print(call)
+
+    if not chimi.settings.noact:
+        os.chdir(oldcwd)
+
+    return result
 
 
 # This function was copied from a Stack Overflow answer at
