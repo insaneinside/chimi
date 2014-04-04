@@ -79,8 +79,9 @@ def pop(close_msg=None):
     the message is cleared.
 
     """
-    sys.stderr.write(close_msg)
-    chimi.transient.msglen[-1] += len(close_msg)
+    if close_msg:
+        sys.stderr.write(close_msg)
+        chimi.transient.msglen[-1] += len(close_msg)
 
     chimi.transient.clear()
 
