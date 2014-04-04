@@ -31,6 +31,7 @@ import chimi
 import chimi.job
 import chimi.core
 import chimi.settings
+import chimi.dependency
 
 from chimi.core import PackageSet
 from chimi.option import Option, OptionParser
@@ -877,6 +878,8 @@ def main():
         sys.stderr.write(err.message+"\n")
         sys.stderr.write('Run `%s show arch -l\' for a list of valid architecture names.\n'%\
                              chimi_command.name)
+    except chimi.dependency.InstallError as err:
+        sys.stderr.write(err.message)
     except chimi.Error as err:
         sys.stderr.write(err.message+"\n")
     return 1

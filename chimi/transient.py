@@ -111,20 +111,41 @@ def import_(parent_name, name, use_perftable=False):
 
 
     """
+    import chimi.dependency
 
-    parent = sys.modules[parent_name]
-    if not use_perftable:
-        chimi.transient.push('(Loading `%s\' ... ' % name)
+    def go():
+        parent = sys.modules[parent_name]
         mod = importlib.import_module(name)
         parent.__dict__[name] = mod
-        chimi.transient.pop(')')
-
         return mod
-    else:
-        with chimi.perftable.time('Loading module `%s\''%name):
-            mod = importlib.import_module(name)
-            parent.__dict__[name] = mod
-            return mod
+
+    popped = False
+    try:
+        if not use_perftable:
+            chimi.transient.push('(Loading `%s\' ... ' % name)
+            return go()
+        else:
+            with chimi.perftable.time('Loading module `%s\''%name):
+                return go()
+    except ImportError:
+        if not use_perftable:
+            chimi.transient.pop()
+            popped = True
+        if name in chimi.dependency.PACKAGES:
+            try:
+                o = chimi.dependency.install(name)
+            except chimi.dependency.InstallError as err:
+                sys.stderr.write(err.message+'\n')
+                exit(1)
+            return go()
+        else:
+            if not popped and not use_perftable:
+                chimi.transient.pop()
+            raise
+    finally:
+        if not popped and not use_perftable:
+            chimi.transient.pop(')')
+
 
 class OnDemandLoader(object):
     """
