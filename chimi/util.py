@@ -436,6 +436,8 @@ class Table(object):
                     if not isinstance(data[i], self.types[i]):
                         raise ValueError('Entry %d has invalid type: expected `%s\', got `%s\''%
                                          (i, self.types[i], type(data[i])))
+            line_count = 1
+
             for i in self.range:
                 value = str(data[i])
                 match = self.color_re.match(value)
@@ -443,7 +445,10 @@ class Table(object):
                     value = match.group(2)
                 _len = len(value)
                 self.column_data_widths[i] = max(self.column_data_widths[i], _len)
-            self.rows.append(data)
+                if "\n" in value:
+                    line_count = max(line_count, 1 + value.count("\n"))
+
+            self.rows.append((line_count, data))
 
 
     def render(self, use_color=False):
@@ -495,25 +500,39 @@ class Table(object):
         # Insert the header row
         if use_color:
             fmt = "\033[1m%s\033[m"
-            rows.insert(0, [fmt%col for col in self.columns])
+            rows.insert(0, (1, [fmt%col for col in self.columns]))
 
         else:
-            rows.insert(0, self.columns)
+            rows.insert(0, (1, self.columns))
 
         for row in rows:
-            rv = []
-            for entry in row:
-                pre_str = ''
-                value = str(entry)
-                post_str = ''
-                if '\033' in value:
-                    match = self.color_re.match(value)
-                    if match:
-                        if use_color:
-                            pre_str, value, post_str = match.groups()
-                        else:
-                            pre_str, value, post_str = ('', match.group(2), '')
-                rv.extend([pre_str, value, post_str])
-            o += row_format % tuple(rv)
+
+            lc = row[0]
+            data = row[1]
+
+
+            row_lines = []
+            entry_lines = [str(entry).split("\n") for entry in data]
+            for i in self.range:
+                if len(entry_lines[i]) < lc:
+                    entry_lines[i].extend(['' for j in xrange(lc - len(entry_lines[i]))])
+
+            for i in xrange(lc):
+                data = [entry_lines[j][i] for j in self.range]
+                print(data)
+                rv = []
+                for entry in data:
+                    pre_str = ''
+                    value = str(entry)
+                    post_str = ''
+                    if '\033' in value:
+                        match = self.color_re.match(value)
+                        if match:
+                            if use_color:
+                                pre_str, value, post_str = match.groups()
+                            else:
+                                pre_str, value, post_str = ('', match.group(2), '')
+                    rv.extend([pre_str, value, post_str])
+                o += row_format % tuple(rv)
 
         return o
