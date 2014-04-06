@@ -41,6 +41,17 @@ code must obey it or face excision.]
 """
 
 
+disable_dependency_install = False
+"""
+Disable auto-installation of Chimi dependencies to the user's home directory.
+Setting this value to `True` will cause Chimi to die with a Python
+`ImportError` rather than try to resolve that error by fetching and installing
+required libraries from the internet.  Security-conscious users may choose to
+disable this and manually install packages from trusted sources.
+
+"""
+
+
 relative_message_timestamps = False
 """
 When converting build messages to strings, should we use a relative time for

@@ -131,7 +131,9 @@ def import_(parent_name, name, use_perftable=False):
         if not use_perftable:
             chimi.transient.pop()
             popped = True
-        if name in chimi.dependency.PACKAGES:
+        if chimi.settings.disable_dependency_install:
+            raise
+        elif name in chimi.dependency.PACKAGES:
             try:
                 o = chimi.dependency.install(name)
             except chimi.dependency.InstallError as err:
