@@ -45,4 +45,5 @@ from chimi.sshconfig import SSHConfig
 # perftable = chimi.perfutil.TimeTable(True)
 
 import chimi.transient
+dependency = chimi.transient.OnDemandLoader(__name__, 'chimi.dependency')
 chimi.transient.import_(__name__, 'chimi.job')
