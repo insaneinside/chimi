@@ -519,7 +519,6 @@ class Table(object):
 
             for i in xrange(lc):
                 data = [entry_lines[j][i] for j in self.range]
-                print(data)
                 rv = []
                 for entry in data:
                     pre_str = ''
