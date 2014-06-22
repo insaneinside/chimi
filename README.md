@@ -26,41 +26,62 @@ free to try it out, but nothing is promised. ;)
 ## Installing
 ### Dependencies
 
-Chimi is written in Python, and _probably_ requires version 2.7 (2.5 may be
-sufficient).  On TACC Lonestar4, the command `module load python` will make
-Python 2.7 available.  (The author has no experience with other HPC clusters, so
-YMMV there.)
+Chimi is written in Python, and requires version 2.7 of the same.  By default
+it will automatically fetch and install most external packages on which it
+depends if they are not available; since this may be a security concern, a
+mechanism is provided to disable the feature.
 
-Python packages used are:
+Non-standard-library Python modules used are:
 
-  * `yaml` for configuration data,
-  * `saga` (PyPI name "saga-python") for job management,
+  * `yaml` (PyPI name "PyYAML") for configuration data,
+  * `saga` (PyPI name "saga-python") for batch-job management,
   * `pkg_resources` for extracting configuration data from the self-contained
     executable file, and
-  * `GitPython` for git integration.
+  * `git` (PyPI name `GitPython`) for git integration.
 
-If these packages are not available, they can be installed to your account
-directory via
+`pkg_resources` (from `setuptools`) is the sole module that cannot be
+automatically installed.  Because
+[setuptools](https://pypi.python.org/pypi/setuptools) normally *provides*
+`easy_install` and is a much larger package than any other Chimi dependency,
+its installation is left to the user.
+
+#### Manual Python package installation
+
+One may disable automatic installation of external dependencies by changing the line
+
+    disable_dependency_install = False
+
+to
+
+    disable_dependency_install = True
+
+in "settings.py" prior to building Chimi.
+
+Packages not available can be installed manually using either the more-common
+`easy_install` from setuptools or the newer,
+[officially-sanctioned](https://python-packaging-user-guide.readthedocs.org/en/latest/current.html#installation-tool-recommendations)
+`pip`
+([install instructions](http://www.pip-installer.org/en/latest/installing.html)).
+
+With `easy_install` the command is
 
     easy_install --user PACKAGE
 
-or
+and for `pip`
 
     pip install --user PACKAGE
 
-where `PACKAGE` is the Python Package-Index name of the packageto be installed.
+where `PACKAGE` is the Python Package-Index name of the package to be
+installed.
 
-Additional software needed to build Chimi are:
 
-  * GNU `make`, version $(WHATEVER_WORKS).  *Any* non-buggy version of the
-    program should work just fine.  The only GNU-flavored feature we use is the
-    `$(wildcard ...)` function, which was referenced in the changelog as early
-    as version 3.49 (and apparently existed before that).
+### Building Chimi
 
+To create a single-file executable out of Chimi, you'll need
+
+  * GNU `make`, version 3.50 or above, and
   * `zip` zip-file creation/extraction utility from Info-ZIP.  Chimi's author
     has version 3.0.
-
-### Building
 
 Chimi is designed for maximum portability and ease-of-use; to meet this goal, a
 makefile with rules to create an executable archive containing all Chimi
