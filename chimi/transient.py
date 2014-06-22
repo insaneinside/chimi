@@ -21,7 +21,6 @@ loads.
 """
 
 import sys
-import importlib
 import chimi
 
 depth = 0
@@ -115,7 +114,7 @@ def import_(parent_name, name, use_perftable=False):
 
     def go():
         parent = sys.modules[parent_name]
-        mod = importlib.import_module(name)
+        mod = __import__(name)
         parent.__dict__[name] = mod
         return mod
 
