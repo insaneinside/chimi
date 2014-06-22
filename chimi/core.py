@@ -851,7 +851,9 @@ class Package(object):
     @property
     def branch(self):
         """Name of the currently checked-out branch"""
-        return re.sub(r'^heads/', '', self.repository.git.describe(all=True))
+        o = re.sub(r'^(?:heads|remotes)/', '', self.repository.git.describe(all=True, abbrev=0))
+        assert(o in self.branches)
+        return o
 
     @property
     def repository(self):
