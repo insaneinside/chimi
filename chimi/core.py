@@ -810,7 +810,7 @@ class Package(object):
             if not os.path.exists(build.directory):
                 do_save = True
                 builds_to_delete.add(build)
-            if not build.config.branch in self.branches:
+            elif not build.config.branch in self.branches:
                 do_save = True
                 build.config.branch = \
                     re.sub(r'^(?:heads/|remotes/([^/]+)/)', '',
