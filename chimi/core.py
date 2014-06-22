@@ -845,7 +845,11 @@ class Package(object):
         # We fetch the branch list only once per instantiation of the class,
         # because we don't expect it to change during a single Chimi run.
         if not self._branches:
-            self._branches = [re.sub(r'^heads/', '', br.name) for br in self.repository.branches]
+            repo = self.repository
+            if repo:
+                self._branches = [re.sub(r'^heads/', '', br.name) for br in self.repository.branches]
+            else:
+                self._branches = []
         return self._branches
 
     @property
