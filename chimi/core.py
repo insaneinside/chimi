@@ -31,6 +31,7 @@ import shutil
 import datetime
 import textwrap
 import threading
+import subprocess
 
 import chimi
 import chimi.util
