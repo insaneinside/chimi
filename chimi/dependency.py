@@ -41,7 +41,8 @@ PACKAGES = {'_inotify': Package('_inotify', source.GIT, repo='https://github.com
             # GitPython from PyPI seems to be missing some dependencies, so we'll just fetch it from GitHub instead.
             # 'git':	Package('git', 	    source.PYPI, pypi_name='GitPython'),
             'git':	Package('git',	    source.GIT, repo='https://github.com/gitpython-developers/GitPython.git'),
-            'saga':	Package('saga',     source.PYPI, pypi_name='saga-python')}
+            'saga':	Package('saga',     source.PYPI, pypi_name='saga-python'),
+            'yaml':	Package('yaml',	    source.PYPI, pypi_name='PyYAML')}
 
 
 class InstallError(chimi.Error,RuntimeError):
