@@ -31,7 +31,6 @@ import shutil
 import datetime
 import textwrap
 import threading
-from collections import Counter
 
 import chimi
 import chimi.util
@@ -816,7 +815,13 @@ class Package(object):
                     re.sub(r'^(?:heads/|remotes/([^/]+)/)', '',
                            self.repository.git.describe(build.version, all=True))
 
-        counts = Counter([b.directory for b in self.builds])
+        counts = {}
+        for b in self.builds:
+            if b.directory in counts:
+                counts[b] += 1
+            else:
+                counts[b] = 1
+
         for _dir in counts:
             if counts[_dir] > 1:
                 # Discard all but the most-recently-updated build.
