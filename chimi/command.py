@@ -168,6 +168,8 @@ class Command(object):
         if len(self.options) > 0:
             options.extend(OptionParser.flatten(self.options))
 
+        args = list(args)
+
 
         # Make "-h" work for printing the help string for any command.
         # Anything after this option will be ignored -- even subcommands (and
