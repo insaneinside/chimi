@@ -905,13 +905,13 @@ class Package(object):
 
         old_branch = self.branch
         if self.branch != config.branch:
-            check_call(['git', 'checkout', config.branch], cwd=package.directory)
+            check_call(['git', 'checkout', config.branch], cwd=self.directory)
 
         try:
             return self.definition.build(self, config, **kwargs)
         finally:
             if self.branch != old_branch:
-                check_call(['git', 'checkout', old_branch], cwd=package.directory)
+                check_call(['git', 'checkout', old_branch], cwd=self.directory)
 
 
     def purge_builds(self, config=None, names=None, uuids=None,
