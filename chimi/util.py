@@ -336,25 +336,25 @@ def format_duration(duration, significant_units=FORMAT_DURATION_DEFAULT_SIGNIFIC
     days -= y * 365.25
 
     out = ''
-    if significant_units != 0 and y > 0:
+    if significant_units != 0 and y >= 1:
         significant_units -= 1
         out += '%dy ' % y
-    if significant_units != 0 and  mo > 0:
+    if significant_units != 0 and  mo >= 1:
         significant_units -= 1
         out += '%dmo ' % mo
-    if significant_units != 0 and  w > 0:
+    if significant_units != 0 and  w >= 1:
         significant_units -= 1
         out += '%dw ' % w
-    if significant_units != 0 and  d > 0:
+    if significant_units != 0 and  d >= 1:
         significant_units -= 1
         out += '%dd ' % d
-    if significant_units != 0 and  h > 0:
+    if significant_units != 0 and  h >= 1:
         significant_units -= 1
         out += '%dh ' % h
-    if significant_units != 0 and m > 0:
+    if significant_units != 0 and m >= 1:
         significant_units -= 1
         out += '%dm ' % m
-    if significant_units != 0 and s > 0:
+    if significant_units != 0 and s >= 1:
         significant_units -= 1
         out += '%ds ' % s
 
