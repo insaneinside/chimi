@@ -863,7 +863,8 @@ class Package(object):
         else:
             try:
                 self._repository = git.Repo(self.directory)
-            except:
+            except Exception as err:
+                raise
                 self._repository = False
 
             return self._repository
