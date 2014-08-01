@@ -49,6 +49,8 @@ def make_dict_keys_snake_case_recursive(d):
             k2 = k.replace('-', '_')
             d[k2] = d[k]
             del d[k]
+            if isinstance(d[k2], dict):
+                make_dict_keys_snake_case_recursive(d[k2])
     return d
 
 class HostBuildOption(object):
