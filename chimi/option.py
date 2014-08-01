@@ -21,6 +21,29 @@
 import sys
 import re
 
+import chimi
+
+class OptionError(chimi.Error):
+    pass
+
+class InvalidOptionError(OptionError, ValueError):
+    def __init__(self, name, style='short'):
+        self.name = name
+        super(ValueError,self).__init__('Invalid option, `-%s\'' \
+                                            % (name \
+                                                   if style == 'short' \
+                                                   else '-%s' % name))
+
+class UsageError(OptionError, ValueError):
+    def __init__(self, option, style='short'):
+        self.option = option
+        self.style = style
+        super(ValueError,self).__init__('Missing argument `%s` to option -%s' \
+                                            % (option.argument_description,
+                                               option.short_name \
+                                                   if style == 'short' \
+                                                   else '-%s' % option.long_name))
+
 # Option-data storage/representation.  Used to declare/define a single program
 # option.
 class Option:
@@ -373,7 +396,7 @@ class OptionParser:
                 else:
                     if equals_index == -1:
                         if next_arg == None:
-                            raise ValueError('Missing required argument to `--' + option_name + '\'!')
+                            raise UsageError(option, 'long')
                         option.received(next_arg, out)
                         return 2
                     else:
@@ -384,7 +407,7 @@ class OptionParser:
                 option.received(True, out)
                 return 1
         else:
-            raise ValueError('No such option, `--' + option_name + '\'!')
+            raise InvalidOptionError(option_name, 'long')
 
     @classmethod
     def handle_short_options(self, short_option_map, arg, next_arg, out):
@@ -407,14 +430,14 @@ class OptionParser:
                             n = 1
                         else:
                             if next_arg == None:
-                                raise ValueError('Missing required argument to `-' + arg[i] + '\'!')
+                                raise UsageError(option, 'short')
                             option.received(next_arg, out)
                             n = 2
                 else:
                     option.received(True, out)
                     n = 1
             else:
-                raise RuntimeError('No such option, `-' + arg[i] + '\'!')
+                raise InvalidOptionError(arg[i], 'short')
 
             if n > consumed:
                 consumed = n
