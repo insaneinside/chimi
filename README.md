@@ -219,6 +219,27 @@ Configuration-related options are:
     options, can be specified here. See section
     [Applying options](#applying-options) for more information.
 
+There are some auxiliary options to `build` used to manage builds:
+
+  * `--continue`: continue after the last successful step in an aborted or
+    failed build.
+  * `--replace`: overwrite a build with the exact same configuration.
+  * `--force`: force Chimi to perform an action to which it would otherwise
+    object.
+    - With `--continue` on build marked as complete, this forces re-running of
+      the compile step (useful when files have been modified).
+    - With `--replace`, it allows overwriting of a build marked as complete.
+  * `--purge`: forcibly expunge one or more builds.  This option has several
+    forms:
+    - `--purge=all`: purge all builds for the package named on the `build`
+      command line.
+    - `--purge=BUILD[,BUILD]...`: purge all builds that match one of the
+      comma-separated BUILD identifiers; each BUILD may be either a build UUID
+      or name.  Unlike the above form, this usage does not respect the
+      command's selected package.
+
+
+
 Although the build command is designed to provide a simple interface, its
 behaviour is necessarily somewhat complex and deserves a section of its own;
 see the section
