@@ -634,8 +634,18 @@ def show_builds(opts, *args):
             status = make_colored_build_status_string(_build.status)\
                 if use_color \
                 else _build.status.name
+            cfg = _build.config
+            options = list(cfg.components)
+            for d in [cfg.features, cfg.settings]:
+                for k in d:
+                    if d[k]is True:
+                        options.append(k)
+                    elif d[k] is False:
+                        options.append('-%s'%k)
+                    else:
+                        options.append('%s=%s'%(k, d[k]))
             t.append((_build.name, _build.uuid, _build.config.branch,
-                      _build.version, ' '.join(_build.config.components), status))
+                      _build.version, chimi.util.wrap_text(' '.join(options), max_col=48), status))
 
         print(t.render(use_color=use_color))
     else:
@@ -856,7 +866,6 @@ chimi_command = Command(basename, ['COMMAND', '[ARGUMENT]...'],
                         None,
                         callback=common,
                         subcommands=COMMAND_LIST)
-
 def main():
     """
     Chimi's primary entry point.
