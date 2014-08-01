@@ -137,7 +137,19 @@ For a listing of the available top-level commands, just use
     chimi help
 
 Printing of a command's built-in documentation will also be triggered if the
-option `-h` or `--help` is given.
+option `-h` or `--help` is given; the following two commands are equivalent
+
+    chimi COMMAND [SUBCOMMAND]... -h
+    chimi help COMMAND [SUBCOMMAND]...
+
+so long as the same subcommands are given.  Note that, because Chimi's option
+parser associates options with the preceding command word, any commands
+*following* `-h` will be ignored:
+
+    chimi COMMAND [SUBCOMMAND]... -h SUBSUBCOMMAND... [ARG]...
+
+ignores all `SUBSUBCOMMAND`s and any arguments that follow.
+
 
 ### `init` and `fetch`: initialize Chimi database and fetch package sources
 
