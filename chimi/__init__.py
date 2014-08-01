@@ -32,7 +32,9 @@ class Error(Exception):
     Base for all Chimi-defined exception types.
 
     """
-    pass
+    def __str__(self):
+        if hasattr(self, 'message'):
+            return self.message
 
 from chimi.option import Option
 from chimi.option import OptionParser

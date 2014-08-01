@@ -185,7 +185,7 @@ class Command(object):
         try:
             opts_out.update(OptionParser.handle_options(options, args, stop_set))
         except Exception as err:
-            sys.stderr.write('%s: %s\n' % (self.name, err.message))
+            sys.stderr.write('%s: %s\n' % (self.name, str(err)))
             return 3;
 
         if len(self.subcommands) == 0:
@@ -870,18 +870,18 @@ def main():
     try:
         return chimi_command.call({}, args=args)
     except CommandError as err:
-        sys.stderr.write(err.message+"\n")
+        sys.stderr.write(str(err)+"\n")
         sys.stderr.write('Try `%s help%s\' for more information.\n'%\
                              (chimi_command.name,
                               ' ' + ' '.join(err.command.full_name_list[1:]) \
                                   if len(args) > 0 \
                                   else ''))
     except chimi.build.InvalidArchitectureError as err:
-        sys.stderr.write(err.message+"\n")
+        sys.stderr.write(str(err)+"\n")
         sys.stderr.write('Run `%s show arch -l\' for a list of valid architecture names.\n'%\
                              chimi_command.name)
     except chimi.dependency.InstallError as err:
-        sys.stderr.write(err.message)
+        sys.stderr.write(str(err)+"\n")
     except chimi.Error as err:
-        sys.stderr.write(err.message+"\n")
+        sys.stderr.write(str(err)+"\n")
     return 1
