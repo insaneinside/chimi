@@ -100,7 +100,7 @@ Once you've placed the executable in your path (or not), try running it like
 or
 
     chimi help
-    
+
 for usage and sub-command information.
 
 
