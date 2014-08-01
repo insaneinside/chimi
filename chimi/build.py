@@ -284,6 +284,10 @@ class BuildConfig(object):
                 assert(not '=' in opt)
                 name = opt[1:]
                 value = False
+            elif opt[0] == '+':
+                assert(not '=' in opt)
+                name = opt[1:]
+                value = True
 
             if name in available_arch_options:
                 assert(not name in available_configure_options or

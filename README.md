@@ -320,20 +320,20 @@ Options and settings are specified as arguments to the `-o` or `--options`
 option to `chimi build`.  This option takes a comma-separated list of option
 declarations, where each declaration is one of
 
-  * "option", "option=true", or "option=on" to enable the named option,
+  * "+option", "option=true", or "option=on" to enable the named option,
   * "-option", "option=false", or "option=off" to disable the named option, or
   * "option=value" to set an option to a non-boolean argument.
 
 For example, one might use
 
-    chimi build -ocuda,-ibverbs changa
+    chimi build -o+cuda,-ibverbs changa
 
 to request a CUDA-enabled build of ChaNGa without InfiniBand support on a host
 where Chimi's built-in configuration would otherwise have enabled it.  (Note
 that the `changa` argument is superfluous, since that's the default anyway.)
 If we need to specify the CUDA install path, we could run
 
-    chimi build -ocuda,-ibverbs,cuda=/path/to/cuda/toolkit
+    chimi build -o+cuda,-ibverbs,cuda=/path/to/cuda/toolkit
 
 and Chimi would figure out that the two "cuda" options are semantically
 distinct: the first maps to the Charm++ "cuda" build component, while the

@@ -635,11 +635,11 @@ def show_builds(opts, *args):
                 if use_color \
                 else _build.status.name
             cfg = _build.config
-            options = list(cfg.components)
+            options = ['+%s'%c for c in cfg.components]
             for d in [cfg.features, cfg.settings]:
                 for k in d:
-                    if d[k]is True:
-                        options.append(k)
+                    if d[k] is True:
+                        options.append('+%s'%k)
                     elif d[k] is False:
                         options.append('-%s'%k)
                     else:
@@ -844,7 +844,7 @@ name, option type, default value, and the documentation as originally written;
 note that when specifying a value to e.g. `chimi build -o', the syntax must be
 one of
 
-  * "option", "option=true", or "option=on" to enable the named option,
+  * "+option", "option=true", or "option=on" to enable the named option,
   * "-option", "option=false", or "option=off" to disable the named option, or
   * "option=value" to set an option to a non-boolean argument,
 
