@@ -217,7 +217,8 @@ Configuration-related options are:
     options and settings.  Both Charm++ "options" specifying build components
     and compilers, and settings normally available through `configure` script
     options, can be specified here. See section
-    [Applying options](#applying-options) for more information.
+    [Options, and their Practical Use](#options-and-their-practical-use) for
+    more information.
 
 There are some auxiliary options to `build` used to manage builds:
 
