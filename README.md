@@ -57,8 +57,8 @@ to
 
 in "settings.py" prior to building Chimi.
 
-Packages not available can be installed manually using either the more-common
-`easy_install` from setuptools or the newer,
+In such a case, packages not available can be installed manually using either
+the more-common `easy_install` from setuptools or the newer,
 [officially-sanctioned](https://python-packaging-user-guide.readthedocs.org/en/latest/current.html#installation-tool-recommendations)
 `pip`
 ([install instructions](http://www.pip-installer.org/en/latest/installing.html)).
