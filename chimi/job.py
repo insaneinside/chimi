@@ -248,7 +248,7 @@ def build_charm_extension(package_set):
         #
         # I don't like being told that I did something wrong when it's not my
         # fault, so we redirect standard error to /dev/null.  (Compile errors?
-        # What compile errors?)
+        # *What* compile errors?)
         stderr = os.dup(sys.stderr.fileno())
         devnull = os.open(os.devnull, os.O_RDWR)
         os.dup2(devnull, sys.stderr.fileno())
@@ -424,6 +424,10 @@ def build_changa_invocation(opts, job_description, build,
 
 
 def common(opts, *args):
+    """
+    Common initializer for `job` commandlet sub-commands.
+
+    """
     load_saga()
     host_config = None
 

@@ -45,18 +45,20 @@ class CommandError(chimi.Error):
     pass
 
 class CommandUsageError(CommandError,ValueError):
+    """Error raised when a command is called with invalid arguments."""
     def __init__(self, cmd):
         self.command = cmd
         super(ValueError, self).__init__('Missing required arguments to "%s".\nUsage: %s' % (cmd.name, cmd.usage))
 
 class SubcommandError(CommandError, NotImplementedError):
+    """Error raised when a subcommand does not exist."""
     def __init__(self, cmd, subcmd):
         self.command = cmd
         self.subcommand = subcmd
         super(NotImplementedError, self).__init__('Command `%s\' has no such subcommand, `%s\'' % (cmd.name, subcmd))
 
 class Command(object):
-    """Describes a program command"""
+    """Describes a program command."""
 
     def __init__(self, name, args, brief, options, detail,
                  callback=None,
@@ -241,6 +243,12 @@ def is_root_dir(_dir):
     return os.path.dirname(_dir) == _dir
 
 def find_current_package_dir():
+    """
+    Search up the directory hierarchy from the current directory for
+    a directory containing a Chimi database file.
+
+    """
+
     _dir = os.getcwd()
     check = os.path.join(_dir, PackageSet.SET_FILE)
     if os.path.exists(check):

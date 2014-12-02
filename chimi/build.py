@@ -444,14 +444,22 @@ class Build(object):
     def __init__(self, pkg, config,
                  initial_status=BuildStatus.Unconfigured, initial_message=None,
                  _uuid=None, name=None, messages=None):
-        self.uuid = uuid.uuid1()
+        self.uuid = _uuid if _uuid != None else uuid.uuid1()
         self.package = pkg
         self.config = config
 
+        # Ensure the build configuration has a repository branch selected.
+        # If it doesn't, use the currently checked-out branch.
         if not 'branch' in self.config.__dict__ or not self.config.branch in self.package.branches:
             self.config.branch = self.package.branch
 
         if _uuid == None and name == None and messages == None:
+            # Probably a new build.
+
+            # Unfortunately the package definitions for Charm and ChaNGa
+            # currently use different naming schemes.
+            #
+            # FIXME: unify package-build naming schemes.
             if self.package.definition == chimi.core.ChaNGaDefinition:
                 self.name = pkg.definition.get_build_name(build=self,
                                                           charm_name=chimi.core.CharmDefinition.get_build_name(self),
@@ -461,7 +469,7 @@ class Build(object):
 
             self.messages = [BuildMessage(initial_status, initial_message)]
         else:
-            self.uuid = _uuid
+            # UUID, name, and messages were explicitly specified.
             self.name = name
             self.messages = messages
 

@@ -1,3 +1,14 @@
+/* Template for a simple Python extension that uses Charm++ to determine the
+ * number of cores on the current host.
+ *
+ * Since the Charm++ license isn't very permissive, we simply provide this
+ * template and extract the necessary code directly from the Charm++ source
+ * tree as needed.
+ *
+ * This file is in the public domain:  the author disclaims all rights to --
+ * and any accountability for your use of -- this file.
+ */
+
 #include <Python.h>
 #include <converse.h>
 

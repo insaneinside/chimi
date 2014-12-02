@@ -82,7 +82,7 @@ class Option:
     def __init__(self, short_name, long_name, description,
                  argument_description=None, argument_optional=None):
         if short_name == None and long_name == None:
-            raise ArgumentError.new('Short name and long name cannot both be `nil\'!')
+            raise ArgumentError.new('Short name and long name cannot both be `None\'!')
         self.short_name = short_name
         self.long_name = long_name
         self.description = description
@@ -193,6 +193,7 @@ class OptionParser:
 
     @classmethod
     def determine_options_style(self, options):
+        """Determine how the options in `options` were specified."""
         is_dict_of_lists = False
         is_list_of_tuples = False
         is_list_of_flat_tuples = False

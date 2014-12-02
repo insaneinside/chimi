@@ -141,6 +141,8 @@ class PackageConfigureOption(object):
                self.kind, self.default,
                ''  if not self.arg_doc or not len(self.arg_doc) \
                    else ' arg:%s' % self.arg_doc)
+
+
 class PackageDefinition(object):
     """Information about how to fetch and build a particular package."""
 
@@ -280,6 +282,9 @@ class ChaNGaDefinition(PackageDefinition):
         directory = package.directory
         builds_dir = os.path.join(directory, 'builds')
         if os.path.exists(builds_dir):
+            # Most of the data-scraping logic for `find_existing_builds` is
+            # shared between ChaNGaDefinition and CharmDefinition, so we've
+            # stuck most of it into CharmDefinition.
             return CharmDefinition.find_existing_builds(package, builds_dir)
         else:
             return []
@@ -635,12 +640,23 @@ class CharmDefinition(PackageDefinition):
 
     @classmethod
     def find_existing_build_data(self, package, build_dir=None):
+        """
+        Extract information sufficient to create BuildConfig objects for builds
+        existent prior to creation of the Chimi database file.
+
+        """
         if build_dir == None:
+            # Maybe we're storing package builds right in the package directory?
             build_dir = package.directory
+
         if len(CharmDefinition.Architectures) == 0:
             if package.definition == self:
                 self.load_architectures(package)
             else:
+                # This method is (indirectly) used by ChaNGaDefinition, since
+                # it would share much of the same logic.  But a ChaNGa package
+                # directory does not contain information on available Charm++
+                # architectures -- so we have to raise an error here.
                 raise RuntimeError('Cannot load architectures from non-Charm++ build tree!')
         arches = list(CharmDefinition.Architectures.keys())
         arches.sort(key=lambda x: len(x), reverse=True)
@@ -673,7 +689,7 @@ class CharmDefinition(PackageDefinition):
             except:
                 pass
 
-            # Load the autoconf `config_opts.sh' file and reconstruct
+            # Load the autoconf `config.status' file and reconstruct
             # build-config settings from its contents.
             config_opts_file = os.path.join(build_dir, dirname, 'tmp', 'config.status')
             if not os.path.isfile(config_opts_file):
@@ -722,6 +738,12 @@ class CharmDefinition(PackageDefinition):
 
     @classmethod
     def find_existing_builds(self, package, build_dir=None):
+        """
+        Create and store build entries for all existing builds for this package.
+        This method is normally called only when the Chimi database file
+        is initialized.
+
+        """
         data = self.find_existing_build_data(package, build_dir)
         builds = []
         for eb in data:
@@ -733,6 +755,11 @@ class CharmDefinition(PackageDefinition):
 
     @classmethod
     def build(self, package, config, _continue=False, replace=False, force=False):
+        """
+        Build Charm++ for use with ChaNGa.
+
+        """
+
         srcdir = package.directory
 
         assert(config.branch != None)
@@ -776,8 +803,15 @@ class CharmDefinition(PackageDefinition):
             return _build
 
 class UtilityDefinition(PackageDefinition):
+    """
+    Package definition for the ChaNGa `utility` library.  Since `utility` is
+    compiled as part of ChaNGa, no `build` method needs to be defined.
+
+    """
+
     name = 'utility'
     repository = chimi.settings.DEFAULT_REPOSITORIES['utility']
+
 
 class Package(object):
     """A single package instance."""
@@ -993,7 +1027,12 @@ class Package(object):
 
 
 class PackageSet(object):
-    """A set of package instances required to build (and including) ChaNGa"""
+    """
+    A set of package instances, including ChaNGa, required to build ChaNGa.
+    For API purposes, this is the in-memory representation of the
+    Chimi database.
+
+    """
     SET_FILE = 'chimi.yaml'
     def __init__(self, directory):
         self.directory = directory
@@ -1008,11 +1047,13 @@ class PackageSet(object):
                                              os.path.join(directory, 'utility'))}
 
     def __del__(self):
+        """Write the database file at object destruction, if necessary."""
         if 'save_flag' in self.__dict__ and not chimi.settings.noact:
             if self.save_flag:
                 self.save()
 
     def save(self):
+        """Write the database file to disk."""
         assert(chimi.settings.noact == False)
         self.mutex.acquire()
         mtx = self.mutex
@@ -1042,7 +1083,6 @@ class PackageSet(object):
                     self.packages[pkg]._branches = branches[pkg]
                 self.save_flag = False
                 self.mutex = mtx
-                # sys.stderr.write("done.\n")
         finally:
             self.mutex = mtx
             self.mutex.release()
@@ -1052,6 +1092,8 @@ class PackageSet(object):
 
     @classmethod
     def load(self, directory):
+        """Load the database file from disk."""
+
         out = yaml.load(file(os.path.join(directory, PackageSet.SET_FILE),
                              'r').read())
         if not 'mutex' in out.__dict__:

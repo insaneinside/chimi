@@ -32,4 +32,6 @@ class LModModule(types.ModuleType):
             out = subprocess.check_output([os.environ['LMOD_CMD'], 'python', 'load', x])
             exec out
 
+# Override the `chimi.lmod` reference (which normally refers to the scope of
+# this file) with LModModule.
 sys.modules['chimi.lmod'] = LModModule
