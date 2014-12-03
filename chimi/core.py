@@ -373,6 +373,8 @@ class ChaNGaDefinition(PackageDefinition):
 
 class CharmArchitecture(object):
     """Stores metadata for a Charm++ build architecture"""
+    architectures = {}
+
     def __init__(self, parent, name,
                  options=None, compilers=None, fortran_compilers=None,
                  is_base=False):
@@ -428,6 +430,18 @@ class CharmArchitecture(object):
                             out[i].extend(rprop)
                 ref = ref.parent
             return out
+
+    @property
+    def base(self):
+        """
+        Get the lowest-level architecture above "common" in this architecture's
+        inheritance tree.
+
+        """
+        out = self
+        while out.parent and out.parent.name != 'common':
+            out = out.parent
+        return out
 
     @property
     def all_options(self):
@@ -500,12 +514,102 @@ class CharmArchitecture(object):
                name_string,
                (' ' + body_string) if len(body_string) > 0 else '')
 
+    @classmethod
+    def get_arch_options_and_compilers(self, package_directory, arch):
+        """
+        Fetch available options and compilers for a specific architecture from
+        a Charm++ package tree.
+
+        package_directory: Charm++ package directory.
+        arch: name of the architecture for which to load options and compilers
+
+        """
+        _dir = os.path.join(package_directory, 'src', 'arch', arch)
+        entries = os.listdir(_dir)
+        compilers = [CharmDefinition.COMPILERS_REGEXP.sub(r'\1', ce) \
+                         for ce in filter(lambda x: CharmDefinition.COMPILERS_REGEXP.match(x),
+                                          entries)]
+        options = [CharmDefinition.OPTIONS_REGEXP.sub(r'\1', ce) \
+                       for ce in filter(lambda x: CharmDefinition.OPTIONS_REGEXP.match(x),
+                                        entries)]
+        fortran_compilers_list = ['g95', 'gfortran', 'absoft', 'pgf90', 'ifc', 'ifort']
+
+        fortran_compilers = filter(lambda x: x in fortran_compilers_list, options)
+
+        # Remove fortran compilers from options
+        options = filter(lambda x: not x in fortran_compilers, options)
+
+        return (options, compilers, fortran_compilers)
+
+    @classmethod
+    def load(self, package):
+        """
+        Load Charm++ architectures defined within a Charm++ source tree.
+
+        This method loads Charm++ architecture data -- including available
+        build-options and compilers for each architecture -- from a Charm++
+        package tree.
+
+        package: Charm++ package instance.
+
+        """
+        if not hasattr(self, 'architectures'):
+            self.architectures = []
+        if len(self.architectures) > 0:
+            return self.architectures
+
+        directory = package.directory
+        # We *could* make a native Python version of this shell command, but
+        # since we're trying to recreate the same values that Charm++'s "build"
+        # script comes up with, it's probably better to just copy the command
+        # straight out of that script.
+        run = "cd %s ; ls -1 | egrep -v '(^CVS)|(^shmem$)|(^mpi$)|(^sim$)|(^net$)|(^multicore$)|(^util$)|(^common$)|(^uth$)|(^conv-mach-fix.sh$)|(^win32$)|(^win64$)|(^paragon$)|(^lapi$)|(^cell$)|(^gemini_gni$)|(^pami$)|(^template$)|(^cuda$)'" % (os.path.join(directory, 'src', 'arch'))
+        out = subprocess.check_output(run, shell=True)
+        architecture_names = filter(lambda x: len(x) > 0, out.split("\n"))
+
+        # Now fetch the available compilers and options for each Charm++
+        # architecture.
+        common = CharmArchitecture(None, 'common', *self.get_arch_options_and_compilers(directory, 'common'),
+                                   is_base=True)
+        self.architectures['common'] = common
+
+        for name in architecture_names:
+            parent = common
+
+            base_name=re.sub(r'^([^-]+)-.*$', r'\1', name)
+            if base_name != name \
+                    and os.path.isdir(os.path.join(directory, 'src', 'arch', base_name)):
+                if not base_name in CharmArchitecture.architectures:
+                    # Load the "base" compiler/option sets for the architecture.
+                    self.architectures[base_name] = \
+                        CharmArchitecture(common, base_name,
+                                          *self.get_arch_options_and_compilers(directory, base_name),
+                                          is_base=True)
+                else:
+                    base = self.architectures[base_name]
+                    base.is_base = True
+
+                parent = self.architectures[base_name]
+
+            arch = CharmArchitecture(parent, name,
+                                     *self.get_arch_options_and_compilers(directory, name))
+            self.architectures[name] = arch
+            if parent:
+                parent.children.append(arch)
+
+    @classmethod
+    def __len__(self):
+        return len(self.architectures)
+
+    @classmethod
+    def __getitem__(self, what):
+        return self.architectures[what]
+
+
 class CharmDefinition(PackageDefinition):
     """Package definition for Charm++"""
     name = 'Charm++'
     repository = chimi.settings.DEFAULT_REPOSITORIES['charm']
-
-    Architectures = {}
 
     COMPILERS_REGEXP = re.compile(r'^cc-([^.]+).h$')
     OPTIONS_REGEXP = re.compile(r'^conv-mach-([^.]+).h$')
@@ -566,79 +670,6 @@ class CharmDefinition(PackageDefinition):
 
 
     @classmethod
-    def get_arch_options_and_compilers(self, package_directory, arch):
-        """
-        Fetch available options and compilers for a specific architecture from
-        a Charm++ package tree.
-
-        """
-        _dir = os.path.join(package_directory, 'src', 'arch', arch)
-        entries = os.listdir(_dir)
-        compilers = [CharmDefinition.COMPILERS_REGEXP.sub(r'\1', ce) \
-                         for ce in filter(lambda x: CharmDefinition.COMPILERS_REGEXP.match(x),
-                                          entries)]
-        options = [CharmDefinition.OPTIONS_REGEXP.sub(r'\1', ce) \
-                       for ce in filter(lambda x: CharmDefinition.OPTIONS_REGEXP.match(x),
-                                        entries)]
-        fortran_compilers_list = ['g95', 'gfortran', 'absoft', 'pgf90', 'ifc', 'ifort']
-
-        fortran_compilers = filter(lambda x: x in fortran_compilers_list, options)
-
-        # Remove fortran compilers from options
-        options = filter(lambda x: not x in fortran_compilers, options)
-
-        return (options, compilers, fortran_compilers)
-
-    @classmethod
-    def load_architectures(self, package):
-        """
-        Initialize CharmDefinition.Architectures.
-
-        This method loads Charm++ architecture data -- including available
-        build-options and compilers for each architecture -- from a Charm++
-        package tree.
-
-        """
-        directory = package.directory
-        # We *could* make a native Python version of this shell command, but
-        # since we're trying to recreate the same values that Charm++'s "build"
-        # script comes up with, it's probably better to just copy the command
-        # straight out of that script.
-        run = "cd %s ; ls -1 | egrep -v '(^CVS)|(^shmem$)|(^mpi$)|(^sim$)|(^net$)|(^multicore$)|(^util$)|(^common$)|(^uth$)|(^conv-mach-fix.sh$)|(^win32$)|(^win64$)|(^paragon$)|(^lapi$)|(^cell$)|(^gemini_gni$)|(^pami$)|(^template$)|(^cuda$)'" % (os.path.join(directory, 'src', 'arch'))
-        out = subprocess.check_output(run, shell=True)
-        architecture_names = filter(lambda x: len(x) > 0, out.split("\n"))
-
-        # Now fetch the available compilers and options for each Charm++
-        # architecture.
-        common = CharmArchitecture(None, 'common', *self.get_arch_options_and_compilers(directory, 'common'),
-                                   is_base=True)
-        CharmDefinition.Architectures['common'] = common
-
-        for name in architecture_names:
-            parent = common
-
-            base_name=re.sub(r'^([^-]+)-.*$', r'\1', name)
-            if base_name != name \
-                    and os.path.isdir(os.path.join(directory, 'src', 'arch', base_name)):
-                if not base_name in CharmDefinition.Architectures:
-                    # Load the "base" compiler/option sets for the architecture.
-                    CharmDefinition.Architectures[base_name] = \
-                        CharmArchitecture(common, base_name,
-                                          *self.get_arch_options_and_compilers(directory, base_name),
-                                          is_base=True)
-                else:
-                    base = CharmDefinition.Architectures[base_name]
-                    base.is_base = True
-
-                parent = CharmDefinition.Architectures[base_name]
-
-            arch = CharmArchitecture(parent, name,
-                                     *self.get_arch_options_and_compilers(directory, name))
-            CharmDefinition.Architectures[name] = arch
-            if parent:
-                parent.children.append(arch)
-
-    @classmethod
     def find_existing_build_data(self, package, build_dir=None):
         """
         Extract information sufficient to create BuildConfig objects for builds
@@ -649,16 +680,16 @@ class CharmDefinition(PackageDefinition):
             # Maybe we're storing package builds right in the package directory?
             build_dir = package.directory
 
-        if len(CharmDefinition.Architectures) == 0:
+        if len(CharmArchitecture.architectures) == 0:
             if package.definition == self:
-                self.load_architectures(package)
+                CharmArchitecture.load(package)
             else:
                 # This method is (indirectly) used by ChaNGaDefinition, since
                 # it would share much of the same logic.  But a ChaNGa package
                 # directory does not contain information on available Charm++
                 # architectures -- so we have to raise an error here.
-                raise RuntimeError('Cannot load architectures from non-Charm++ build tree!')
-        arches = list(CharmDefinition.Architectures.keys())
+                raise RuntimeError('Cannot load architectures from non-Charm++ package tree!')
+        arches = list(CharmArchitecture.architectures.keys())
         arches.sort(key=lambda x: len(x), reverse=True)
 
         # Find all entries under `build_dir` that match available architectures.
@@ -763,8 +794,8 @@ class CharmDefinition(PackageDefinition):
         srcdir = package.directory
 
         assert(config.branch != None)
-        if len(CharmDefinition.Architectures) == 0:
-            self.load_architectures(package)
+        if len(CharmArchitecture.architectures) == 0:
+            CharmArchitecture.load(package)
 
         opts = []
         _build = None

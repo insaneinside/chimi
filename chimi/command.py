@@ -540,8 +540,8 @@ def list_items(opts, directory=None):
 def show_architectures(opts, *args):
     ps = chimi.command.find_current_package_set()
 
-    if not len(chimi.core.CharmDefinition.Architectures) > 0:
-        chimi.core.CharmDefinition.load_architectures(ps.packages['charm'])
+    if not len(chimi.core.CharmArchitecture.architectures) > 0:
+        chimi.core.CharmArchitecture.load(ps.packages['charm'])
 
     use_color = sys.stdout.isatty()
     sym_pfx = ''
@@ -559,14 +559,14 @@ def show_architectures(opts, *args):
         list_only = True
 
     if len(args) == 0:
-        args = sorted(chimi.core.CharmDefinition.Architectures.keys());
+        args = sorted(chimi.core.CharmArchitecture.architectures.keys());
     else:
         # Show _all_ architectures that the user explicitly asked to see.
         _type = 'all'
 
     name_fmt = '\033[1;97m%s\033[0m%s' if use_color else '%s%s'
     for aname in args:
-        arch = chimi.core.CharmDefinition.Architectures[aname]
+        arch = chimi.core.CharmArchitecture.architectures[aname]
         if (arch.is_base and _type == 'build') or \
                 (_type == 'base' and not arch.is_base) or \
                 (arch.name == 'common' and _type != 'all'):
@@ -620,9 +620,9 @@ def show_builds(opts, *args):
 
     if 'arch' in opts:
         archname = opts['arch']
-        if not len(chimi.core.CharmDefinition.Architectures) > 0:
-            chimi.core.CharmDefinition.load_architectures(ps.packages['charm'])
-        if not archname in chimi.core.CharmDefinition.Architectures:
+        if not len(chimi.core.CharmArchitecture.architectures) > 0:
+            chimi.core.CharmArchitecture.load(ps.packages['charm'])
+        if not archname in chimi.core.CharmArchitecture.architectures:
             raise InvalidArchitectureError(archname)
         else:
             def gather_names(arch):
@@ -633,7 +633,7 @@ def show_builds(opts, *args):
                                 for name in gather_names(ch)
                                 ])
                 return out
-            arch_names = gather_names(chimi.core.CharmDefinition.Architectures[archname])
+            arch_names = gather_names(chimi.core.CharmArchitecture.architectures[archname])
             _builds = filter(lambda x: x.config.architecture in arch_names, _builds)
 
     if len(_builds) > 0:

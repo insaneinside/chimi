@@ -159,11 +159,18 @@ def apply_tree(to, tree, root=None):
         else:
             to[assign_key] = value
 
-def make_launch_config(build, host_config, architectures):
+def make_launch_config(build, host_config):
     import yaml
     import pkg_resources
 
-    # Copy the host configuration
+
+    # Find the architectures -- actual and base -- of the build.
+    if not len(chimi.core.CharmArchitecture.architectures) > 0:
+        chimi.core.CharmArchitecture.load(package_set.packages['charm'])
+    arch = chimi.core.CharmArchitecture.architectures[build.config.architecture]
+    base_arch = arch.base
+
+    # Copy the host's launch configuration.
     lc = copy.copy(host_config.jobs.launch)
     option_db = yaml.load(pkg_resources.resource_string(__name__, 'data/option.yaml'))
     arch_db = yaml.load(pkg_resources.resource_string(__name__, 'data/architecture.yaml'))
@@ -174,8 +181,6 @@ def make_launch_config(build, host_config, architectures):
         if option in option_db:
             apply_tree(lc, option_db[option],
                        ('jobs', 'launch'))
-
-    arch, base_arch = architectures
 
     if arch_db:
         if base_arch.name in arch_db:
@@ -282,20 +287,12 @@ def build_changa_invocation(opts, job_description, build,
     assert(isinstance(job_description, saga.job.Description))
     import chimi.core
 
-    # Find the architectures -- actual and base -- of the build.
-    if not len(chimi.core.CharmDefinition.Architectures) > 0:
-        chimi.core.CharmDefinition.load_architectures(package_set.packages['charm'])
-    arch = chimi.core.CharmDefinition.Architectures[build.config.architecture]
-    base_arch = arch
-    while base_arch.parent and base_arch.parent.name != 'common':
-        base_arch = base_arch.parent
-
     # Ensure the Charm-related utilities extension is built and available
     build_charm_extension(package_set)
     import charm
 
-    # Construct the launch configuration based on build and architecture settings.
-    lc = make_launch_config(build, host_config, (arch, base_arch))
+    # Construct the launch configuration based on build and host configurations.
+    lc = make_launch_config(build, host_config)
     out = []
 
     # Find the shortest path to the ChaNGa and charmrun executables.
@@ -340,7 +337,7 @@ def build_changa_invocation(opts, job_description, build,
     # network functionality.
     local_net = \
         local_run and \
-        base_arch.name == 'net' and \
+        build.architecture.base.name == 'net' and \
         not 'ibverbs' in build.config.components
 
     # Don't need ++mpiexec or a remote shell for non-ibverbs local runs.
@@ -379,7 +376,7 @@ def build_changa_invocation(opts, job_description, build,
         if job_description.attribute_exists(saga.job.TOTAL_CPU_COUNT):
             out.append('+p%d'% total_cpu_count)
 
-        if base_arch.name == 'net':
+        if build.architecture.base.name == 'net':
             # `net'-specific options.
             if node_count > 1 and processes_per_host > 1 and job_description.attribute_exists(saga.job.PROCESSES_PER_HOST):
                 assert(processes_per_host < cpus_per_host)

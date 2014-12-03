@@ -32,7 +32,7 @@ import chimi.util
 DEFAULT_COMMS_TYPE='net'
 """Default Charm++ communications transport to use"""
 
-def get_architecture(base_arch=DEFAULT_COMMS_TYPE):
+def guess_architecture(base_arch=DEFAULT_COMMS_TYPE):
     """Get the likely Charm++ platform/architecture for the current host"""
     osname, hostname, discard, discard, machname = os.uname()
     return '-'.join([base_arch, osname.lower(), machname.lower()])
@@ -119,18 +119,23 @@ class HostBuildConfig(object):
             if 'default_architecture' in d:
                 self.default_architecture = d['default_architecture']
             else:
-                self.default_architecture = chimi.config.get_architecture()
+                self.default_architecture = chimi.config.guess_architecture()
 
             self.components = {}
             if 'components' in d:
                 for oname in d['components']:
                     self.components[oname] = HostBuildOption((oname, d['components'][oname]))
-        elif isinstance(arch, str) and isinstance(components, dict):
+        if isinstance(arch, str):
+            self.architecture = chimi.core.CharmArchitecture[arch]
             self.default_architecture = arch
+        elif isinstance(arch, chimi.core.CharmArchitecture):
+            self.architecture = arch
+            self.default_architecture = arch.name
+        if isinstance(components, dict):
             for oname in components:
                 self.components[oname] = HostBuildOption((oname, components[oname]))
         else:
-            self.architecture = chimi.config.get_architecture()
+            self.architecture = chimi.config.guess_architecture()
             self.components = {}
 
 
@@ -150,7 +155,7 @@ class HostBuildConfig(object):
         negated_components, negated_features, negated_settings = negations
         arch = build_config.architecture
         if isinstance(arch, basestring):
-            arch = chimi.core.CharmDefinition.Architectures[arch]
+            arch = chimi.core.CharmArchitecture.architectures[arch]
         arch_options = arch.all_options
         for optname in self.components:
             if optname in arch_options and not optname in negated_components:

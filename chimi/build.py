@@ -200,7 +200,7 @@ class BuildConfig(object):
 
             The package for which the build configuration is being created.
 
-        arch : None, str
+        arch : None, str, chimi.core.CharmArchitecture
 
             User-specified architecture name.
 
@@ -222,39 +222,48 @@ class BuildConfig(object):
 
         """
         package_set = package.package_set
-        arch_name = arch
-        arch = None
+
+        # Load architecture definitions if not already loaded.
+        if not len(chimi.core.CharmArchitecture.architectures) > 0:
+            chimi.core.CharmArchitecture.load(package_set.packages['charm'])
+
+
+        arch_name = None
         chose_architecture = False
         completed_architecture = False
+
+        # Make sure we have an architechure name.
+        if isinstance(arch, str):
+            arch_name = arch
+            arch = None
+            if chimi.core.CharmArchitecture.architectures[arch_name].is_base:
+                # Shorthand (base arch) name given.  Fill it in for the user.
+                arch_name = chimi.config.guess_architecture(arch_name)
+                completed_architecture = True
+        elif isinstance(arch, chimi.core.CharmArchitecture):
+            arch_name = arch.name
+        else:
+            arch_name = chimi.config.guess_architecture()
+            chose_architecture = True
+
+
         available_arch_options = None
         available_configure_options = None
 
-        # Load architecture definitions if not already loaded.
-        if not len(chimi.core.CharmDefinition.Architectures) > 0:
-            chimi.core.CharmDefinition.load_architectures(package_set.packages['charm'])
+        if arch is None:
+            if not arch_name in chimi.core.CharmArchitecture.architectures:
+                # No such name even exists, either as a base architecture *or* a
+                # build architecture.  Complain at the user.
+                qualifier = None
+                if chose_architecture:
+                    qualifier = 'Auto-selected'
+                elif completed_architecture:
+                    qualifier = 'Auto-completed'
+                raise InvalidArchitectureError(arch_name, qualifier)
+            else:
+                arch = chimi.core.CharmArchitecture.architectures[arch_name]
 
-        if not arch_name:
-            arch_name = chimi.config.get_architecture()
-            chose_architecture = True
-        elif arch_name in chimi.core.CharmDefinition.Architectures and\
-                chimi.core.CharmDefinition.Architectures[arch_name].is_base:
-            # Shorthand (base arch) name given.  Fill it in for the user.
-            arch_name = chimi.config.get_architecture(arch_name)
-            completed_architecture = True
-
-        if not arch_name in chimi.core.CharmDefinition.Architectures:
-            # No such name even exists, either as a base architecture *or* a
-            # build architecture.  Complain at the user.
-            qualifier = None
-            if chose_architecture:
-                qualifier = 'Auto-selected'
-            elif completed_architecture:
-                qualifier = 'Auto-completed'
-            raise InvalidArchitectureError(arch_name, qualifier)
-        else:
-            arch = arch_name
-
-        available_arch_options = chimi.core.CharmDefinition.Architectures[arch_name].all_options
+        available_arch_options = arch.all_options
         available_configure_options = package.definition.get_configure_options(package)
 
         if isinstance(opts, basestring):
@@ -277,6 +286,7 @@ class BuildConfig(object):
         for opt in options_ary:
             name, value = opt, True
 
+            # Parse option specifications.
             if '=' in opt:
                 name, value = opt.split('=', 1)
 
@@ -343,7 +353,7 @@ class BuildConfig(object):
             as described in the next overload before the given host-build
             configuration is applied.
 
-        overload: __init__(arch<str>, components<list>, features<list>, settings<dict>,
+        overload: __init__(arch<chimi.core.CharmArchitecture>, components<list>, features<list>, settings<dict>,
                            extras<list>, branch<str>=None)
 
            Initialize without any host-default values.
@@ -359,7 +369,8 @@ class BuildConfig(object):
             negations = kwargs['negations'] if 'negations' in kwargs else ([], [], [])
             self.host_build_config.apply(self, negations)
         else:
-            arch=chimi.config.get_architecture()
+            # Set default values
+            arch=chimi.config.guess_architecture()
             components = []
             features = {}
             settings = {}
