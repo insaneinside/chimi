@@ -91,6 +91,22 @@ def pop(close_msg=None):
     if chimi.transient.depth > 0:
         chimi.transient.show()
 
+class Context:
+    """Helper class for transient-message contexts"""
+    def __init__(self, message, close_message = None):
+        self.message = message
+        self.close_message = close_message
+
+    def __enter__(self):
+        chimi.transient.push(self.message)
+    def __exit__(self, *args):
+        chimi.transient.pop(self.close_message);
+
+def message(message, close_message = None):
+    """Show a transient message while inside a `with` context."""
+    return Context(message, close_message)
+
+
 def import_(parent_name, name, use_perftable=False):
     """
     Import `name` into the module named `parent_name`.  If `use_perftable`, the
@@ -120,16 +136,11 @@ def import_(parent_name, name, use_perftable=False):
 
     popped = False
     try:
-        if not use_perftable:
-            chimi.transient.push('(Loading `%s\' ... ' % name)
+        context = chimi.perftable.time('Loading module `%s\''%name) if use_perftable \
+                  else chimi.transient.message('(Loading `%s\' ... ' % name, ')')
+        with context:
             return go()
-        else:
-            with chimi.perftable.time('Loading module `%s\''%name):
-                return go()
     except ImportError:
-        if not use_perftable:
-            chimi.transient.pop()
-            popped = True
         if chimi.settings.disable_dependency_install:
             raise
         elif name in chimi.dependency.PACKAGES:
@@ -140,13 +151,7 @@ def import_(parent_name, name, use_perftable=False):
                 exit(1)
             return go()
         else:
-            if not popped and not use_perftable:
-                chimi.transient.pop()
             raise
-    finally:
-        if not popped and not use_perftable:
-            chimi.transient.pop(')')
-
 
 class OnDemandLoader(object):
     """

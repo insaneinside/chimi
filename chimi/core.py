@@ -163,52 +163,49 @@ class PackageDefinition(object):
         return: dict
 
         """
-        chimi.transient.push('(Loading %s configure options ... ' % self.name)
+        with chimi.transient.message('(Loading %s configure options ... ' % self.name, ')'):
+            script = self.get_configure_path(instance)
+            script_help = subprocess.check_output([script, '--help'])
+            lre = re.compile(r'^((\s*)--(enable|disable|with|without)-([^\s\[=]+)([=\[]?[^\s]*)\s*)(.*)$')
+            lines = script_help.split('\n')
 
-        script = self.get_configure_path(instance)
-        script_help = subprocess.check_output([script, '--help'])
-        lre = re.compile(r'^((\s*)--(enable|disable|with|without)-([^\s\[=]+)([=\[]?[^\s]*)\s*)(.*)$')
-        lines = script_help.split('\n')
-
-        opts = {}
-        last_align = 0
-        last_groups = None
-        def handle_option(groups):
-            pre, indent, kind, name, arg_doc, doc = groups
-            name = name.strip()
-            arg_doc = arg_doc.strip()
-            doc = doc.strip()
-            opt = PackageConfigureOption(name, kind, doc, arg_doc)
-            if (opt.kind == 'enable' and opt.name == 'FEATURE') or \
-                    (opt.kind == 'with' and opt.name == 'PACKAGE'):
-                # Skip the example options.
-                return
-            elif name in opts:
-                raise ValueError('%s: `configure\' option name conflict: %s'%(self.name, name))
-            else:
-                opts[name] = opt
-
-        for i in xrange(len(lines)):
-            m = lre.match(lines[i])
-            if m:
-                indent, pre, kind, name, eq, doc = m.groups()
-                if last_groups:
-                    handle_option(last_groups)
-                    last_groups = None
-                last_align = len(pre)
-                last_groups = list(m.groups())
-            else:
-                if last_align > 0 and lines[i].startswith(' ' * last_align):
-                    last_groups[-1] += ' ' + lines[i].strip()
+            opts = {}
+            last_align = 0
+            last_groups = None
+            def handle_option(groups):
+                pre, indent, kind, name, arg_doc, doc = groups
+                name = name.strip()
+                arg_doc = arg_doc.strip()
+                doc = doc.strip()
+                opt = PackageConfigureOption(name, kind, doc, arg_doc)
+                if (opt.kind == 'enable' and opt.name == 'FEATURE') or \
+                        (opt.kind == 'with' and opt.name == 'PACKAGE'):
+                    # Skip the example options.
+                    return
+                elif name in opts:
+                    raise ValueError('%s: `configure\' option name conflict: %s'%(self.name, name))
                 else:
+                    opts[name] = opt
+
+            for i in xrange(len(lines)):
+                m = lre.match(lines[i])
+                if m:
+                    indent, pre, kind, name, eq, doc = m.groups()
                     if last_groups:
                         handle_option(last_groups)
                         last_groups = None
-                    last_align = 0
+                    last_align = len(pre)
+                    last_groups = list(m.groups())
+                else:
+                    if last_align > 0 and lines[i].startswith(' ' * last_align):
+                        last_groups[-1] += ' ' + lines[i].strip()
+                    else:
+                        if last_groups:
+                            handle_option(last_groups)
+                            last_groups = None
+                        last_align = 0
 
-        chimi.transient.pop(')')
-
-        return opts
+            return opts
 
     @classmethod
     def get_build_name(self, build):

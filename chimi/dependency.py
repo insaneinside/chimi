@@ -132,9 +132,9 @@ def install_from_git(pkg, tmp_dir, clean_name, logfile):
         clone_cmd.extend(['-b', pkg.branch])
     clone_cmd.extend([pkg.repo, repo_dir])
 
-    chimi.transient.push('(Installing dependency "%s": fetching ... ' % pkg.name)
-    r = chimi.util.check_call(clone_cmd, out=logfile, err=logfile)
-    chimi.transient.pop(')')
+    r = None
+    with chimi.transient.message('(Installing dependency "%s": fetching ... ' % pkg.name, ')'):
+        r = chimi.util.check_call(clone_cmd, out=logfile, err=logfile)
 
     if r:
         return r
@@ -142,10 +142,9 @@ def install_from_git(pkg, tmp_dir, clean_name, logfile):
     if not chimi.settings.noact:
         assert(os.path.isfile(os.path.join(repo_dir, 'setup.py')))
 
-    chimi.transient.push('(Installing dependency "%s": installing ... ' % pkg.name)
-    r = chimi.util.check_call(['python', 'setup.py', 'install', '--user'], repo_dir,
-                              out=logfile, err=logfile)
-    chimi.transient.pop(')')
+    with chimi.transient.message('(Installing dependency "%s": installing ... ' % pkg.name, ')'):
+        r = chimi.util.check_call(['python', 'setup.py', 'install', '--user'], repo_dir,
+                                  out=logfile, err=logfile)
 
     if not r and not chimi.settings.noact:
         shutil.rmtree(repo_dir)
@@ -171,7 +170,8 @@ def install_from_pypi(pkg, logfile):
 
     cmd.extend(['--user', name])
 
-    chimi.transient.push('(Installing dependency "%s" ... ' % pkg.name)
-    r = chimi.util.check_call(cmd, out=logfile, err=logfile)
-    chimi.transient.pop(')')
+    r = None
+    with chimi.transient.message('(Installing dependency "%s" ... ' % pkg.name, ')'):
+        r = chimi.util.check_call(cmd, out=logfile, err=logfile)
+
     return r
