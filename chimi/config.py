@@ -40,7 +40,7 @@ def guess_architecture(base_arch=DEFAULT_COMMS_TYPE):
 def make_dict_keys_snake_case_recursive(d):
     """
     Recursively convert a dict's keys, **in-place**, from spinal-case to
-    snake-case.
+    snake_case.
 
     """
     keys = d.keys()
@@ -111,7 +111,14 @@ class HostBuildOption(object):
         return str(self.__dict__)
 
 class HostBuildConfig(object):
-    """Build configuration values for a specific host."""
+    """
+
+    Build configuration values for a specific host.  Note that this class does
+    not *not* represent a configuration for a build of a specific package;
+    rather it represents the host-specific configuration that would be modified
+    to create a chimi.build.BuildConfig instance.
+
+    """
     def __init__(self, arch=None, components=None):
         if isinstance(arch, dict) and components == None:
             d = arch

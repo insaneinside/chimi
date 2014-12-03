@@ -160,6 +160,12 @@ def apply_tree(to, tree, root=None):
             to[assign_key] = value
 
 def make_launch_config(build, host_config):
+    """
+    Create a launch configuration for the specified build and host
+    configuration by copying host config's `.jobs.launch` subtree and applying
+    build-specific overlays from data/option.yaml and data/architecture.yaml.
+
+    """
     import yaml
     import pkg_resources
 
@@ -309,6 +315,9 @@ def build_changa_invocation(opts, job_description, build,
         changa_path = changa_relpath
 
     # Determine run parameters.
+    #
+    # FIXME: handle non-local runs.  Should also be able to specify
+    # `cpus_per_host` in host configuration file.
     cpus_per_host = charm.cmi.num_cores()
 
     total_cpu_count = job_description.total_cpu_count \
