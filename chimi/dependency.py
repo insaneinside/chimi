@@ -34,32 +34,53 @@ import chimi.transient
 
 __all__ = ['source', 'Package', 'PACKAGES', 'InstallError', 'install']
 
-source = chimi.util.create_enum(__name__, 'source', 'GIT', 'PYPI', doc='Source-type enumeration for dependency packages.')
-Package = chimi.util.create_struct(__name__, 'Package', 'name', 'source', pypi_name=None, repo=None, branch=None)
+Source = chimi.util.create_enum(__name__, 'Source', 'GIT', 'PYPI', 'FATAL',
+                                doc='Source-type enumeration for dependency packages.')
+Package = chimi.util.create_struct(__name__, 'Package', 'name', 'source',
+                                   pypi_name=None, repo=None, branch=None, fatal_reason=None)
 
-PACKAGES = {'_inotify': Package('_inotify', source.GIT, repo='https://github.com/insaneinside/python-inotify.git'),
+PACKAGES = {'_inotify': Package('_inotify', Source.GIT, repo='https://github.com/insaneinside/python-inotify.git'),
             # GitPython from PyPI seems to be missing some dependencies, so we'll just fetch it from GitHub instead.
-            # 'git':	Package('git', 	    source.PYPI, pypi_name='GitPython'),
-            'git':	Package('git',	    source.GIT, repo='https://github.com/gitpython-developers/GitPython.git'),
-            'saga':	Package('saga',     source.PYPI, pypi_name='saga-python'),
-            'yaml':	Package('yaml',	    source.PYPI, pypi_name='PyYAML')}
+            # 'git':	Package('git',      Source.PYPI, pypi_name='GitPython'),
+            'git':	Package('git',      Source.GIT, repo='https://github.com/gitpython-developers/GitPython.git'),
+            'saga':	Package('saga',     Source.PYPI, pypi_name='saga-python'),
+            'yaml':	Package('yaml',     Source.PYPI, pypi_name='PyYAML'),
+            'pkg_resources': Package('setuptools', Source.FATAL,
+                                     fatal_reason='provides utilities necessary to install other packages.')}
 
 
 class InstallError(chimi.Error,RuntimeError):
-    def __init__(self, pkg, logfile):
+    Reason = chimi.util.create_enum(__name__, 'Reason', 'COMMAND_FAILED', 'CANNOT_AUTO_INSTALL',
+                                    doc='Possible causes of dependency-install errors.')
+
+
+    def __init__(self, pkg, reason=None, logfile=None):
         self.package = pkg
-        self.logfile = logfile
-        super(RuntimeError, self).__init__('Installation of program dependency "%s" failed.\n' % self.package.name
-                                           + '    source: %s\n' % self.source_str(self.package)
-                                           + 'Log: %s' % os.path.relpath(self.logfile, os.getcwd()))
+        if reason == Reason.COMMAND_FAILED:
+            if logfile:
+                self.logfile = logfile
+                logfile_relpath = os.path.relpath(self.logfile, os.getcwd())
+                path_for_message = logfile_relpath if len(logfile_relpath) < len(self.logfile) else self.logfile
+
+                super(RuntimeError, self).__init__('Installation of program dependency "%s" failed.\n' % self.package.name
+                                                   + '    source: %s\n' % self.source_str(self.package)
+                                                   + 'Log: %s' % path_for_message)
+            else:
+                super(RuntimeError, self).__init__('Installation of program dependency "%s" failed.\n' % self.package.name
+                                                   + '    source: %s\n' % self.source_str(self.package))
+        elif reason == Reason.CANNOT_AUTO_INSTALL:
+            super(RuntimeError, self).__init__('Installation of program dependency "%s" failed.\n' % self.package.name +
+                                               '    This package cannot be installed automatically because it\n' +
+                                               '    %s.' % self.package.fatal_reason)
+
 
     @classmethod
     def source_str(self, pkg):
-        if pkg.source == source.GIT:
+        if pkg.source == Source.GIT:
             return ('git repository %s (branch "%s")' % (pkg.repo, pkg.branch)
                     if pkg.branch
                     else 'git repository %s' % pkg.repo)
-        elif pkg.source == source.PYPI:
+        elif pkg.source == Source.PYPI:
             return 'Python Package Index package "%s"' % pkg.pypi_name
 
 def install(name):
@@ -77,17 +98,19 @@ def install(name):
         logfile_path = os.path.join(tmp_dir, 'install-%s.log' % clean_name)
         logfile = file(logfile_path, 'w')
 
-        if pkg.source == source.GIT:
+        if pkg.source == Source.GIT:
             r = install_from_git(pkg, tmp_dir, clean_name, logfile)
-        elif pkg.source == source.PYPI:
+        elif pkg.source == Source.PYPI:
             r = install_from_pypi(pkg, logfile)
+        elif pkg.source == Source.FATAL:
+            raise InstallError(pkg, reason=InstallError.Reason.CANNOT_AUTO_INSTALL)
         else:
             raise NotImplementedError('%s: unknown dependency source type' % pkg.source)
 
         logfile.close()
 
         if r:
-            raise InstallError(pkg, logfile_path)
+            raise InstallError(pkg, reason=InstallError.Reason.COMMAND_FAILED, logfile=logfile)
         else:
             os.unlink(logfile_path)
             if len(os.listdir(tmp_dir)) == 0:
